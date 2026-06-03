@@ -5,7 +5,8 @@
   "main": "src/core/power.ts",
   "type": "module",
   "scripts": {
-    "start": "node --loader ts-node/esm src/core/power.ts",
+    "start": "node --import 'data:text/javascript,import { register } from \"node:module\"; import { pathToFileURL } from \"node:url\"; register(\"ts-node/esm\", pathToFileURL(\"./\"));' src/core/power.ts",
+    "dev": "npm start",
     "typecheck": "npx tsc --noEmit",
     "test": "vitest run",
     "ci": "npm run typecheck && npm test"
@@ -26,6 +27,6 @@
     "offline",
     "sentry"
   ],
-  "author": "",
+  "author": "Edy Cu",
   "license": "MIT"
 }
