@@ -10,7 +10,7 @@ import {
   stopQVACProvider,
   LLAMA_3_2_1B_INST_Q4_0,
   GTE_LARGE_FP16,
-  TTS_EN_SUPERTONIC_Q8_0,
+  TTS_EN_ES_CHATTERBOX_Q4F16,
   WHISPER_EN_TINY_Q8_0 as _WHISPER_EN_TINY_Q8_0,
 } from "@qvac/sdk";
 
@@ -107,7 +107,7 @@ export async function loadEmbeddingModel(modelSrc: any = EMBEDDING_MODEL_ID) {
 export async function loadTTSModel(_eSpeakDataPath: string = "./espeak-data") {
   try {
     const modelId = await loadModel({
-      modelSrc: TTS_EN_SUPERTONIC_Q8_0.src,
+      modelSrc: TTS_EN_ES_CHATTERBOX_Q4F16.src,
       modelType: "tts",
       modelConfig: {
         language: "en",
