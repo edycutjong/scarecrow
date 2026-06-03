@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Scarecrow — Seed Script. Usage: python3 scripts/seed.py"""
-import os, sys, json
+import os
+import json
 
 def main():
     base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))

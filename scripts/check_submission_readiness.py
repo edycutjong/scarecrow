@@ -5,20 +5,27 @@ Scarecrow — Submission Readiness Checker
 Validates all hackathon submission requirements before push.
 Run: python3 scripts/check_submission_readiness.py
 """
-import os, sys, json, re
+import os
+import sys
+import json
 
-P = 0; F = 0; W = 0
+P = 0
+F = 0
+W = 0
 def check(name, condition, detail=""):
     global P, F
     if condition:
-        P += 1; print(f"  ✅ {name}")
+        P += 1
+        print(f"  ✅ {name}")
     else:
-        F += 1; print(f"  ❌ {name}: {detail}")
+        F += 1
+        print(f"  ❌ {name}: {detail}")
 
 def warn(name, condition, detail=""):
     global W
     if not condition:
-        W += 1; print(f"  ⚠️  {name}: {detail}")
+        W += 1
+        print(f"  ⚠️  {name}: {detail}")
 
 def main():
     base = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -78,7 +85,7 @@ def main():
     for section in ["Why ONLY QVAC", "Getting Started", "Architecture",
                     "Benchmark", "Offline", "License", "Limitation", "Testing"]:
         check(f"README has '{section}'", section.lower() in readme.lower(),
-              f"Section missing")
+              "Section missing")
 
     # Check for placeholder text
     placeholders = ["TODO", "FIXME", "placeholder", "lorem ipsum", "TBD"]
@@ -106,9 +113,9 @@ def main():
     print(f"\n{'=' * 64}")
     print(f"  Results: {P} passed, {F} failed, {W} warnings")
     if F > 0:
-        print(f"  ❌ NOT READY FOR SUBMISSION")
+        print("  ❌ NOT READY FOR SUBMISSION")
     else:
-        print(f"  ✅ SUBMISSION READY")
+        print("  ✅ SUBMISSION READY")
     print(f"{'=' * 64}")
     sys.exit(1 if F > 0 else 0)
 
