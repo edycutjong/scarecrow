@@ -1,0 +1,37 @@
+[
+  {
+    "id": "scene-1",
+    "description": "A brown dog walking across a green lawn near a wooden shed",
+    "expected_rule_match": null,
+    "expected_alert": false,
+    "notes": "Dog should be ignored per rule-1"
+  },
+  {
+    "id": "scene-2",
+    "description": "A person in a blue jacket walking toward a wooden shed on a gravel path",
+    "expected_rule_match": "rule-1",
+    "expected_alert": true,
+    "notes": "Person near shed — should trigger rule-1"
+  },
+  {
+    "id": "scene-3",
+    "description": "An empty field with grass and a fence, no people or animals visible",
+    "expected_rule_match": null,
+    "expected_alert": false,
+    "notes": "No entities — no alert"
+  },
+  {
+    "id": "scene-4",
+    "description": "A person and a dog walking together near the main house, away from the shed",
+    "expected_rule_match": null,
+    "expected_alert": false,
+    "notes": "Person is near house, not shed — no alert"
+  },
+  {
+    "id": "scene-5",
+    "description": "Two children playing near the shed with a ball",
+    "expected_rule_match": "rule-1",
+    "expected_alert": true,
+    "notes": "Children are people — should trigger rule-1"
+  }
+]

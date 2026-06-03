@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scarecrow — AI Sentry Dashboard</title>
+  <style>
+    :root {
+      --bg: #0a0e1a; --card: #111827; --border: #1e293b;
+      --cyan: #06b6d4; --green: #22c55e; --amber: #f59e0b; --red: #ef4444;
+      --text: #f1f5f9; --text2: #94a3b8; --muted: #64748b;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, sans-serif; padding: 20px; }
+    .app { max-width: 600px; margin: 0 auto; }
+    .header { text-align: center; margin-bottom: 24px; }
+    .logo { font-size: 48px; }
+    h1 { font-size: 28px; font-weight: 800; letter-spacing: 1px; }
+    .subtitle { color: var(--text2); font-size: 13px; margin-top: 4px; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.3); padding: 6px 14px; border-radius: 100px; font-size: 11px; font-weight: 700; color: var(--green); letter-spacing: 1.5px; margin-top: 12px; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+
+    .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+    .stat { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
+    .stat-value { font-size: 24px; font-weight: 800; }
+    .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+
+    h2 { font-size: 14px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 12px; }
+
+    .rules { margin-bottom: 24px; }
+    .rule { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .rule-condition { font-size: 14px; }
+    .rule-action { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 6px; }
+    .rule-alert { background: rgba(239,68,68,.15); color: var(--red); }
+    .rule-ignore { background: rgba(34,197,94,.15); color: var(--green); }
+
+    .events { margin-bottom: 24px; }
+    .event { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 8px; }
+    .event-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .event-time { font-size: 11px; color: var(--muted); font-family: monospace; }
+    .event-badge { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+    .badge-alert { background: rgba(239,68,68,.15); color: var(--red); }
+    .badge-clear { background: rgba(34,197,94,.15); color: var(--green); }
+    .event-desc { font-size: 13px; color: var(--text2); }
+
+    .footer { text-align: center; border-top: 1px solid var(--border); padding-top: 20px; margin-top: 32px; }
+    .footer p { font-size: 11px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <div class="logo">🔌</div>
+      <h1>Scarecrow</h1>
+      <p class="subtitle">Off-Grid AI Sentry · Raspberry Pi</p>
+      <div class="pill"><span class="dot"></span>OFFLINE · QVAC</div>
+    </div>
+
+    <div class="status-grid">
+      <div class="stat">
+        <div class="stat-value" style="color: var(--green)">CLEAR</div>
+        <div class="stat-label">Status</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" style="color: var(--cyan)">3</div>
+        <div class="stat-label">Events Today</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" style="color: var(--amber)">78%</div>
+        <div class="stat-label">Battery</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" style="color: var(--cyan)">1.2 GB</div>
+        <div class="stat-label">RAM Used</div>
+      </div>
+    </div>
+
+    <h2>🔒 Active Rules</h2>
+    <div class="rules">
+      <div class="rule">
+        <span class="rule-condition">Person near shed or approaching</span>
+        <span class="rule-action rule-alert">ALERT</span>
+      </div>
+      <div class="rule">
+        <span class="rule-condition">Dog or animal present</span>
+        <span class="rule-action rule-ignore">IGNORE</span>
+      </div>
+      <div class="rule">
+        <span class="rule-condition">Vehicle in driveway</span>
+        <span class="rule-action rule-alert">ALERT</span>
+      </div>
+      <div class="rule">
+        <span class="rule-condition">Bird or small animal on lawn</span>
+        <span class="rule-action rule-ignore">IGNORE</span>
+      </div>
+    </div>
+
+    <h2>📋 Event Log</h2>
+    <div class="events" id="event-log">
+      <div class="event">
+        <div class="event-header">
+          <span class="event-time">14:23:01</span>
+          <span class="event-badge badge-alert">🔴 ALERT</span>
+        </div>
+        <div class="event-desc">Person in dark clothing approaching shed door. Rule 1 triggered. TTS alert spoken.</div>
+      </div>
+      <div class="event">
+        <div class="event-header">
+          <span class="event-time">13:45:12</span>
+          <span class="event-badge badge-clear">✅ CLEAR</span>
+        </div>
+        <div class="event-desc">Golden retriever on porch. Rule 2: ignored (animal).</div>
+      </div>
+      <div class="event">
+        <div class="event-header">
+          <span class="event-time">11:02:45</span>
+          <span class="event-badge badge-clear">✅ CLEAR</span>
+        </div>
+        <div class="event-desc">Empty yard, no motion detected. No rules matched.</div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>Vision: QVAC-Vision-1B · Rules: Llama 3.2 1B · TTS: Piper · 100% Offline</p>
+      <p style="margin-top: 8px;">Served from Pi hotspot · 192.168.4.1:8080</p>
+    </div>
+  </div>
+</body>
+</html>

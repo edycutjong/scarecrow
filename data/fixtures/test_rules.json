@@ -1,0 +1,17 @@
+[
+  {
+    "id": "rule-1",
+    "text": "Alert if a person approaches the shed. Ignore the dog.",
+    "description": "Primary demo rule — tests person vs animal discrimination"
+  },
+  {
+    "id": "rule-2",
+    "text": "Alert if anyone enters the driveway after 10pm.",
+    "description": "Time-based rule — tests conditional reasoning"
+  },
+  {
+    "id": "rule-3",
+    "text": "Alert if a vehicle stops near the gate for more than 30 seconds.",
+    "description": "Duration-based rule — tests temporal reasoning"
+  }
+]

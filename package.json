@@ -1,0 +1,31 @@
+{
+  "name": "scarecrow",
+  "version": "1.0.0",
+  "description": "Off-grid AI sentry: vision + rules + spoken alerts on a Raspberry Pi ≤4GB",
+  "main": "src/core/power.ts",
+  "type": "module",
+  "scripts": {
+    "start": "node --loader ts-node/esm src/core/power.ts",
+    "typecheck": "npx tsc --noEmit",
+    "test": "vitest run",
+    "ci": "npm run typecheck && npm test"
+  },
+  "dependencies": {
+    "@qvac/sdk": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.8"
+  },
+  "keywords": [
+    "qvac",
+    "edge-ai",
+    "raspberry-pi",
+    "offline",
+    "sentry"
+  ],
+  "author": "",
+  "license": "MIT"
+}
