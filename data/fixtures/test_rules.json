@@ -1,17 +1,32 @@
 [
-  {
-    "id": "rule-1",
-    "text": "Alert if a person approaches the shed. Ignore the dog.",
-    "description": "Primary demo rule — tests person vs animal discrimination"
-  },
-  {
-    "id": "rule-2",
-    "text": "Alert if anyone enters the driveway after 10pm.",
-    "description": "Time-based rule — tests conditional reasoning"
-  },
-  {
-    "id": "rule-3",
-    "text": "Alert if a vehicle stops near the gate for more than 30 seconds.",
-    "description": "Duration-based rule — tests temporal reasoning"
-  }
+  {"id": "1",  "condition": "A person is near the shed or approaching", "action": "alert"},
+  {"id": "2",  "condition": "A dog or animal is present", "action": "ignore"},
+  {"id": "3",  "condition": "A vehicle is parked in the driveway", "action": "alert"},
+  {"id": "4",  "condition": "A bird or small animal on the lawn", "action": "ignore"},
+  {"id": "5",  "condition": "A person climbing or jumping over the fence", "action": "alert"},
+  {"id": "6",  "condition": "Wind blowing trees, bushes, or debris", "action": "ignore"},
+  {"id": "7",  "condition": "A person carrying tools or equipment near the shed", "action": "alert"},
+  {"id": "8",  "condition": "Rain, snow, or weather-related motion", "action": "ignore"},
+  {"id": "9",  "condition": "Multiple people gathering on the property", "action": "alert"},
+  {"id": "10", "condition": "A cat or raccoon near garbage bins", "action": "ignore"},
+  {"id": "11", "condition": "A person attempting to open a door or window", "action": "alert"},
+  {"id": "12", "condition": "Sprinkler system or irrigation running", "action": "ignore"},
+  {"id": "13", "condition": "Fire, smoke, or flames visible", "action": "alert"},
+  {"id": "14", "condition": "Shadows or light changes from passing clouds", "action": "ignore"},
+  {"id": "15", "condition": "A person with a flashlight at night", "action": "alert"},
+  {"id": "16", "condition": "Leaves falling or blowing across the yard", "action": "ignore"},
+  {"id": "17", "condition": "An unknown vehicle entering the property", "action": "alert"},
+  {"id": "18", "condition": "Deer or livestock grazing in the field", "action": "ignore"},
+  {"id": "19", "condition": "A drone or flying object over the property", "action": "alert"},
+  {"id": "20", "condition": "A package or delivery left at the door", "action": "alert"},
+  {"id": "21", "condition": "A person wearing a mask or face covering", "action": "alert"},
+  {"id": "22", "condition": "Insects or cobwebs on the camera lens", "action": "ignore"},
+  {"id": "23", "condition": "A person running or moving at high speed on the property", "action": "alert"},
+  {"id": "24", "condition": "Construction noise or machinery vibration nearby", "action": "ignore"},
+  {"id": "25", "condition": "A person loitering or standing still suspiciously for extended time", "action": "alert"},
+  {"id": "26", "condition": "Automatic outdoor lighting turning on or off", "action": "ignore"},
+  {"id": "27", "condition": "A person throwing objects at structures or cameras", "action": "alert"},
+  {"id": "28", "condition": "Reflections in windows or puddles showing movement", "action": "ignore"},
+  {"id": "29", "condition": "A person crawling on the ground near structures", "action": "alert"},
+  {"id": "30", "condition": "Normal daytime scene with no entities or motion", "action": "ignore"}
 ]
