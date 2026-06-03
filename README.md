@@ -35,14 +35,17 @@ Traditional security cameras need WiFi, cloud subscriptions, and constant power.
 
 ## 🏗️ Architecture & Tech Stack
 
-```
-[PIR Wake] → [Camera] → [QVAC-Vision-1B] → [Scene Description]
-                                                    ↓
-                                          [Llama 3.2 1B Rules]
-                                                    ↓
-                                          Alert? → [Piper TTS] 🔊
-                                                    ↓
-                                              [Event Log + Dashboard]
+```mermaid
+flowchart TD
+    A["⚡ PIR Wake"] --> B["📸 Camera"]
+    B --> C["🧠 QVAC-Vision-1B"]
+    C --> D["📝 Scene Description"]
+    D --> E["🔒 Llama 3.2 1B Rules"]
+    E --> F{"Alert?"}
+    F -- Yes --> G["🔊 Piper TTS"]
+    F -- No --> H["💤 Sleep"]
+    G --> I["📊 Event Log + Dashboard"]
+    H --> A
 ```
 
 | Layer | Technology |
