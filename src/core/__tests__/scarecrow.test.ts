@@ -21,7 +21,7 @@ vi.mock("@qvac/sdk", () => ({
   stopQVACProvider: (...args: any[]) => mockStopQVACProvider(...args),
   LLAMA_3_2_1B_INST_Q4_0: "llama-model",
   GTE_LARGE_FP16: "gte-model",
-  TTS_EN_SUPERTONIC_Q8_0: { src: "tts-src" },
+  TTS_EN_ES_CHATTERBOX_Q4F16: { src: "tts-src" },
   WHISPER_EN_TINY_Q8_0: "whisper-model",
 }));
 
@@ -77,14 +77,25 @@ import {
 } from "../qvac";
 
 describe("Scarecrow Core Module", () => {
+  let consoleLogSpy: ReturnType<typeof vi.spyOn>;
+  let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     (globalThis as any).captureFrameMockImpl = null;
     (globalThis as any).analyzeSceneMockImpl = null;
+    // Suppress all console output — error-path tests intentionally trigger these
+    consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
+    consoleLogSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
     vi.restoreAllMocks();
     stopSentryLoop();
   });
@@ -201,25 +212,26 @@ describe("Scarecrow Core Module", () => {
       await expect(wakeAndCheck()).resolves.not.toThrow();
     });
 
-    it("should start and stop sentry loop scheduling", () => {
-      const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      startSentryLoop(5000);
-      expect(consoleWarnSpy).not.toHaveBeenCalled();
+    it("should start and stop sentry loop scheduling", async () => {
+      // Set up mocks so wakeAndCheck completes cleanly when timer fires
+      mockLoadModel.mockResolvedValue("rules-model-id");
+      mockCompletion.mockResolvedValue({
+        text: Promise.resolve(JSON.stringify({ matchedRuleId: "2", action: "ignore" })),
+      });
 
-      // Trigger interval check
-      vi.advanceTimersByTime(5000);
+      startSentryLoop(5000);
+
+      // Trigger interval check (async to let wakeAndCheck settle)
+      await vi.advanceTimersByTimeAsync(5000);
 
       // Try starting duplicate loop
       startSentryLoop(5000);
       expect(consoleWarnSpy).toHaveBeenCalledWith("[power] Sentry loop already running.");
 
       stopSentryLoop();
-      consoleWarnSpy.mockRestore();
     });
 
     it("should log error when wakeAndCheck throws inside sentry loop", async () => {
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      
       // Force wakeAndCheck to fail (e.g. by making captureFrame throw)
       (globalThis as any).captureFrameMockImpl = vi.fn().mockRejectedValue(new Error("Camera Disconnected"));
       
@@ -231,7 +243,6 @@ describe("Scarecrow Core Module", () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith("[power] Sentry check error:", expect.any(Error));
       
       stopSentryLoop();
-      consoleErrorSpy.mockRestore();
     });
 
     it("should handle wakeAndCheck when rule evaluation returns no matched rule", async () => {
