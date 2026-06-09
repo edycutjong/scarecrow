@@ -291,19 +291,39 @@
       left: 0;
       right: 0;
       height: 90px;
+      top: -90px;
       z-index: 3;
       background: linear-gradient(180deg, transparent, rgba(6, 182, 212, .18) 70%, rgba(6, 182, 212, .45));
       box-shadow: 0 0 30px rgba(6, 182, 212, .4);
-      animation: scan 3.2s ease-in-out infinite;
+      /* linear = constant speed (no lingering); fades hide the wrap point */
+      animation: scan 4s linear infinite;
+      will-change: top, opacity;
+    }
+
+    /* Second beam enters the top while the first is still mid-screen, so the
+       new scan visibly overlaps in before the previous one leaves. */
+    .feed .scanline.two {
+      animation-delay: -2.6s;
+      filter: opacity(.7);
     }
 
     @keyframes scan {
       0% {
         top: -90px;
+        opacity: 0;
+      }
+
+      10% {
+        opacity: 1;
+      }
+
+      90% {
+        opacity: 1;
       }
 
       100% {
         top: 100%;
+        opacity: 0;
       }
     }
 
@@ -721,6 +741,11 @@
       animation: slideIn .45s cubic-bezier(.22, 1, .36, 1);
     }
 
+    /* Rows already on screen (re-render on poll) must not re-animate. */
+    .event.no-anim {
+      animation: none;
+    }
+
     @keyframes slideIn {
       from {
         opacity: 0;
@@ -1018,6 +1043,7 @@
             <canvas id="cam"></canvas>
             <div class="noise"></div>
             <div class="scanline"></div>
+            <div class="scanline two"></div>
             <div class="corner tl"></div>
             <div class="corner tr"></div>
             <div class="corner bl"></div>
@@ -1269,6 +1295,14 @@
         return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
       }
 
+      // Format a server ISO timestamp (UTC) into LOCAL system time, matching the clock.
+      function fmtTime(iso) {
+        var d = iso ? new Date(iso) : new Date();
+        if (isNaN(d.getTime())) return nowStr();
+        var p = function (n) { return String(n).padStart(2, '0'); };
+        return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+      }
+
       function setStage(idx, modelName) {
         stages.forEach(function (s, i) { s.classList.toggle('active', i === idx); });
         activeModel.textContent = modelName || 'idle';
@@ -1429,24 +1463,33 @@
           .replace(/"/g, '&quot;');
       }
 
+      var renderedEventKeys = [];
+      function eventKey(e) { return (e.timestamp || '') + '|' + (e.sceneDescription || ''); }
       function renderLiveEvents(events) {
+        var list = events.slice(-12).reverse(); // newest first
+        var keys = list.map(eventKey);
+        // Nothing changed → leave the DOM (and its animations) untouched.
+        if (keys.join('~~') === renderedEventKeys.join('~~')) return;
+        // Only rows that weren't already shown get the slide-in animation.
+        var seen = {};
+        renderedEventKeys.forEach(function (k) { seen[k] = true; });
         log.innerHTML = '';
-        events.slice(-12).reverse().forEach(function (e) {
+        list.forEach(function (e) {
           var ev = document.createElement('div');
-          ev.className = 'event';
-          var t = (e.timestamp || '').slice(11, 19) || nowStr();
+          ev.className = 'event' + (seen[eventKey(e)] ? ' no-anim' : '');
           var recognized = e.recognizedEntity
             ? '<div class="event-recognized">🧩 Recognised known entity: ' + esc(e.recognizedEntity) + ' — alert suppressed</div>'
             : '';
           ev.innerHTML =
             '<div class="event-header">' +
-            '<span class="event-time">' + t + '</span>' +
+            '<span class="event-time">' + fmtTime(e.timestamp) + '</span>' +
             '<span class="event-badge ' + (e.alerted ? 'badge-alert' : 'badge-clear') + '">' +
             (e.alerted ? '🔴 ALERT' : '✅ CLEAR') + '</span>' +
             '</div>' +
             '<div class="event-desc">' + esc(e.sceneDescription) + '</div>' + recognized;
           log.appendChild(ev);
         });
+        renderedEventKeys = keys;
       }
 
       function renderLiveRules(serverRules) {

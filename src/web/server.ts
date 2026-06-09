@@ -195,6 +195,24 @@ export function createDashboardServer(): http.Server {
   });
 }
 
+/** Pretty boot banner so `npm start` tells you exactly where to open the UI. */
+function printStartupBanner(port: number): void {
+  const cyan = "\x1b[36m";
+  const bold = "\x1b[1m";
+  const dim = "\x1b[2m";
+  const reset = "\x1b[0m";
+  const rule = "═".repeat(50);
+  console.log("");
+  console.log(`  ${cyan}${rule}${reset}`);
+  console.log(`   🔌  ${bold}Scarecrow — AI Sentry is LIVE${reset}`);
+  console.log(`  ${cyan}${rule}${reset}`);
+  console.log(`   ▶ Open the dashboard:   ${cyan}${bold}http://localhost:${port}${reset}`);
+  console.log(`   ▶ On the Pi hotspot:    ${dim}http://192.168.4.1:${port}${reset}`);
+  console.log(`   ${dim}Press Ctrl+C to stop${reset}`);
+  console.log(`  ${cyan}${rule}${reset}`);
+  console.log("");
+}
+
 /**
  * Boot the local dashboard over the Pi's hotspot and start the sentry loop.
  * Binds 0.0.0.0 so phones joined to the AP can reach 192.168.4.1:PORT.
@@ -203,7 +221,7 @@ export function startDashboardServer(port = 8080, intervalMs = 10_000): http.Ser
   const server = createDashboardServer();
   server.listen(port, "0.0.0.0", async () => {
     await hydrateEventLog(); // restore persisted events from previous runs
-    console.log(`[web] 📡 Scarecrow dashboard live at http://0.0.0.0:${port} (Pi hotspot)`);
+    printStartupBanner(port);
     startSentryLoop(intervalMs);
   });
   return server;
