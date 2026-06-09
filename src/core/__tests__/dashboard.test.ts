@@ -414,7 +414,7 @@ describe("server.ts — live HTTP roundtrip", () => {
       await new Promise((r) => setTimeout(r, 10));
     }
     
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("[web] 📡 Scarecrow dashboard live at"));
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Scarecrow — AI Sentry is LIVE"));
     server.close();
   });
 });
