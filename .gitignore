@@ -21,6 +21,7 @@ coverage/
 # Data (generated)
 data/seed_manifest.json
 data/bench_results.json
+data/events.jsonl
 
 # Model files
 *.gguf

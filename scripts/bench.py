@@ -28,18 +28,34 @@ BUDGET = {
     "peak_ram_mb": 3800,          # ≤4GB hard constraint (leave 200MB for OS)
 }
 
-SCENES = [
-    {"id": "scene-1", "desc": "Dog walking across lawn near shed", "expected_alert": False},
-    {"id": "scene-2", "desc": "Person in blue jacket approaching shed", "expected_alert": True},
-    {"id": "scene-3", "desc": "Empty field, no entities", "expected_alert": False},
-    {"id": "scene-4", "desc": "Person and dog near main house, not shed", "expected_alert": False},
-    {"id": "scene-5", "desc": "Two children playing near the shed", "expected_alert": True},
-]
+def load_fixtures():
+    base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    fixtures = os.path.join(base, 'data', 'fixtures')
+    rules_path = os.path.join(fixtures, 'test_rules.json')
+    scenes_path = os.path.join(fixtures, 'test_scenes.json')
+    
+    rules = []
+    scenes = []
+    
+    if os.path.isfile(rules_path):
+        with open(rules_path) as f:
+            rules_data = json.load(f)
+            rules = [f"Alert if {r['condition']} ({r['action']})" for r in rules_data]
+            
+    if os.path.isfile(scenes_path):
+        with open(scenes_path) as f:
+            scenes_data = json.load(f)
+            scenes = [
+                {
+                    "id": f"scene-{i+1}", 
+                    "desc": s["description"], 
+                    "expected_alert": s["expected_alert"]
+                } for i, s in enumerate(scenes_data)
+            ]
+            
+    return scenes, rules
 
-RULES = [
-    "Alert if a person approaches the shed. Ignore the dog.",
-    "Alert if anyone enters the driveway after 10pm.",
-]
+SCENES, RULES = load_fixtures()
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
