@@ -4,5 +4,11 @@ export default defineConfig({
   test: {
     include: ["src/**/__tests__/**/*.test.ts"],
     globals: false,
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json", "html"],
+      include: ["src/**/*.ts"],
+      exclude: ["src/**/__tests__/**"]
+    }
   },
 });
