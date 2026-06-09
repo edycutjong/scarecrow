@@ -1,129 +1,1577 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Scarecrow — AI Sentry Dashboard</title>
+  <title>Scarecrow — AI Sentry Command</title>
+  <meta name="description"
+    content="$50 off-grid AI sentry on a Raspberry Pi ≤4GB. Multimodal scene understanding, natural-language rules, and TTS alerts.">
+  <meta name="theme-color" content="#060912">
+
+  <!-- Icons -->
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="favicon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Scarecrow — AI Sentry Command">
+  <meta property="og:description" content="Off-grid AI sentry on a Raspberry Pi. See, understand, speak — zero cloud.">
+  <meta property="og:type" content="website">
+  <meta property="og:image"
+    content="https://raw.githubusercontent.com/edycutjong/scarecrow/main/docs/assets/og-image.png">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Scarecrow — AI Sentry Command">
+  <meta name="twitter:description" content="Off-grid AI sentry on a Raspberry Pi. See, understand, speak — zero cloud.">
+  <meta name="twitter:image"
+    content="https://raw.githubusercontent.com/edycutjong/scarecrow/main/docs/assets/og-image.png">
   <style>
     :root {
-      --bg: #0a0e1a; --card: #111827; --border: #1e293b;
-      --cyan: #06b6d4; --green: #22c55e; --amber: #f59e0b; --red: #ef4444;
-      --text: #f1f5f9; --text2: #94a3b8; --muted: #64748b;
+      --bg: #060912;
+      --bg2: #0a0e1a;
+      --card: #0e1524cc;
+      --border: #1b2740;
+      --cyan: #06b6d4;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --purple: #a855f7;
+      --text: #f1f5f9;
+      --text2: #94a3b8;
+      --muted: #5b6b85;
+      --glow-cyan: 0 0 24px rgba(6, 182, 212, .35);
     }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, sans-serif; padding: 20px; }
-    .app { max-width: 600px; margin: 0 auto; }
-    .header { text-align: center; margin-bottom: 24px; }
-    .logo { font-size: 48px; }
-    h1 { font-size: 28px; font-weight: 800; letter-spacing: 1px; }
-    .subtitle { color: var(--text2); font-size: 13px; margin-top: 4px; }
-    .pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.3); padding: 6px 14px; border-radius: 100px; font-size: 11px; font-weight: 700; color: var(--green); letter-spacing: 1.5px; margin-top: 12px; }
-    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
 
-    .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
-    .stat { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
-    .stat-value { font-size: 24px; font-weight: 800; }
-    .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-    h2 { font-size: 14px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 12px; }
+    html,
+    body {
+      height: 100%;
+    }
 
-    .rules { margin-bottom: 24px; }
-    .rule { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
-    .rule-condition { font-size: 14px; }
-    .rule-action { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 6px; }
-    .rule-alert { background: rgba(239,68,68,.15); color: var(--red); }
-    .rule-ignore { background: rgba(34,197,94,.15); color: var(--green); }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image:
+        radial-gradient(900px 500px at 80% -10%, rgba(6, 182, 212, .10), transparent 60%),
+        radial-gradient(700px 500px at 10% 110%, rgba(168, 85, 247, .10), transparent 60%);
+    }
 
-    .events { margin-bottom: 24px; }
-    .event { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 8px; }
-    .event-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-    .event-time { font-size: 11px; color: var(--muted); font-family: monospace; }
-    .event-badge { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
-    .badge-alert { background: rgba(239,68,68,.15); color: var(--red); }
-    .badge-clear { background: rgba(34,197,94,.15); color: var(--green); }
-    .event-desc { font-size: 13px; color: var(--text2); }
+    /* animated grid backdrop */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(27, 39, 64, .45) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(27, 39, 64, .45) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, #000 30%, transparent 90%);
+      animation: gridDrift 28s linear infinite;
+    }
 
-    .footer { text-align: center; border-top: 1px solid var(--border); padding-top: 20px; margin-top: 32px; }
-    .footer p { font-size: 11px; color: var(--muted); }
+    @keyframes gridDrift {
+      from {
+        background-position: 0 0;
+      }
+
+      to {
+        background-position: 44px 44px;
+      }
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 22px 18px 48px;
+    }
+
+    /* ---------- Header ---------- */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo {
+      font-size: 30px;
+      width: 56px;
+      height: 56px;
+      box-shadow: var(--glow-cyan);
+      position: relative;
+    }
+
+    .logo::after {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      border-radius: 16px;
+      border: 1px solid transparent;
+      background: linear-gradient(120deg, var(--cyan), transparent 40%, var(--purple)) border-box;
+      -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: .6;
+      animation: spinBorder 6s linear infinite;
+    }
+
+    @keyframes spinBorder {
+      to {
+        filter: hue-rotate(360deg);
+      }
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: .5px;
+      line-height: 1;
+      font-family: 'Orbitron', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, var(--red) 0%, var(--amber) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .subtitle {
+      color: var(--text2);
+      font-size: 12px;
+      margin-top: 5px;
+      letter-spacing: .3px;
+    }
+
+    .head-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(34, 197, 94, .08);
+      border: 1px solid rgba(34, 197, 94, .3);
+      padding: 7px 14px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--green);
+      letter-spacing: 1.2px;
+    }
+
+    .pill.cyan {
+      background: rgba(6, 182, 212, .08);
+      border-color: rgba(6, 182, 212, .3);
+      color: var(--cyan);
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+
+    .pill.cyan .dot {
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan);
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: .4;
+        transform: scale(.7);
+      }
+    }
+
+    .clock {
+      font-family: ui-monospace, 'SF Mono', monospace;
+      font-size: 13px;
+      color: var(--text2);
+      letter-spacing: 1px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 10px;
+    }
+
+    /* ---------- Layout ---------- */
+    .grid {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 880px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      backdrop-filter: blur(8px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 1.4px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .card-title .tag {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: .8px;
+    }
+
+    /* ---------- Camera feed ---------- */
+    .feed {
+      position: relative;
+      aspect-ratio: 16/10;
+      border-radius: 12px;
+      overflow: hidden;
+      background:
+        radial-gradient(120% 90% at 50% 0%, #16324a 0%, #0c1828 45%, #070d18 100%);
+      border: 1px solid #18324a;
+    }
+
+    .feed canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .feed .scanline {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 90px;
+      z-index: 3;
+      background: linear-gradient(180deg, transparent, rgba(6, 182, 212, .18) 70%, rgba(6, 182, 212, .45));
+      box-shadow: 0 0 30px rgba(6, 182, 212, .4);
+      animation: scan 3.2s ease-in-out infinite;
+    }
+
+    @keyframes scan {
+      0% {
+        top: -90px;
+      }
+
+      100% {
+        top: 100%;
+      }
+    }
+
+    .feed .noise {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      opacity: .05;
+      pointer-events: none;
+      background-image: repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 3px);
+      mix-blend-mode: overlay;
+      animation: flick .12s steps(2) infinite;
+    }
+
+    @keyframes flick {
+      50% {
+        opacity: .02;
+      }
+    }
+
+    .feed .corner {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border: 2px solid rgba(6, 182, 212, .7);
+      z-index: 5;
+    }
+
+    .feed .corner.tl {
+      top: 10px;
+      left: 10px;
+      border-right: 0;
+      border-bottom: 0;
+    }
+
+    .feed .corner.tr {
+      top: 10px;
+      right: 10px;
+      border-left: 0;
+      border-bottom: 0;
+    }
+
+    .feed .corner.bl {
+      bottom: 10px;
+      left: 10px;
+      border-right: 0;
+      border-top: 0;
+    }
+
+    .feed .corner.br {
+      bottom: 10px;
+      right: 10px;
+      border-left: 0;
+      border-top: 0;
+    }
+
+    .feed .hud {
+      position: absolute;
+      z-index: 6;
+      font-family: ui-monospace, monospace;
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: rgba(6, 182, 212, .85);
+      text-shadow: 0 0 6px rgba(6, 182, 212, .5);
+    }
+
+    .hud.cam {
+      top: 14px;
+      left: 40px;
+    }
+
+    .hud.rec {
+      top: 14px;
+      right: 40px;
+      color: var(--red);
+      text-shadow: 0 0 6px rgba(239, 68, 68, .6);
+    }
+
+    .hud.rec::before {
+      content: "●";
+      margin-right: 5px;
+      animation: pulse 1.2s infinite;
+    }
+
+    .hud.loc {
+      bottom: 14px;
+      left: 40px;
+      color: var(--text2);
+      text-shadow: none;
+    }
+
+    /* detection bounding box */
+    .bbox {
+      position: absolute;
+      z-index: 6;
+      border: 2px solid var(--red);
+      border-radius: 3px;
+      box-shadow: 0 0 14px rgba(239, 68, 68, .5), inset 0 0 14px rgba(239, 68, 68, .15);
+      transition: all .4s cubic-bezier(.22, 1, .36, 1);
+    }
+
+    .bbox.safe {
+      border-color: var(--green);
+      box-shadow: 0 0 14px rgba(34, 197, 94, .4), inset 0 0 14px rgba(34, 197, 94, .12);
+    }
+
+    .bbox .label {
+      position: absolute;
+      top: -22px;
+      left: -2px;
+      font-family: ui-monospace, monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      background: var(--red);
+      color: #fff;
+      padding: 2px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .bbox.safe .label {
+      background: var(--green);
+    }
+
+    /* ---------- Threat banner ---------- */
+    .banner {
+      margin-top: 14px;
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border: 1px solid;
+      transition: all .35s;
+    }
+
+    .banner.clear {
+      background: rgba(34, 197, 94, .07);
+      border-color: rgba(34, 197, 94, .35);
+    }
+
+    .banner.alert {
+      background: rgba(239, 68, 68, .10);
+      border-color: rgba(239, 68, 68, .5);
+      animation: alertPulse 1.1s ease-in-out infinite;
+    }
+
+    @keyframes alertPulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, .0);
+      }
+
+      50% {
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, .12);
+      }
+    }
+
+    .banner-ico {
+      font-size: 28px;
+    }
+
+    .banner-main {
+      flex: 1;
+    }
+
+    .banner-state {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: .5px;
+    }
+
+    .banner.clear .banner-state {
+      color: var(--green);
+    }
+
+    .banner.alert .banner-state {
+      color: var(--red);
+    }
+
+    .banner-desc {
+      font-size: 12px;
+      color: var(--text2);
+      margin-top: 2px;
+    }
+
+    /* ---------- Stats ---------- */
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .stat {
+      background: linear-gradient(160deg, rgba(255, 255, 255, .025), transparent);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-label {
+      font-size: 9.5px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+
+    .spark {
+      height: 3px;
+      border-radius: 2px;
+      margin-top: 8px;
+      background: var(--border);
+      overflow: hidden;
+    }
+
+    .spark>i {
+      display: block;
+      height: 100%;
+      border-radius: 2px;
+      transition: width .6s ease;
+    }
+
+    /* ---------- Inference pipeline ---------- */
+    .pipe {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .stage {
+      flex: 1;
+      text-align: center;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 8px;
+      position: relative;
+      transition: all .3s;
+      background: rgba(255, 255, 255, .012);
+    }
+
+    .stage.active {
+      border-color: var(--cyan);
+      box-shadow: var(--glow-cyan);
+      background: rgba(6, 182, 212, .06);
+    }
+
+    .stage.active .stage-ico {
+      animation: bob 1s ease-in-out infinite;
+    }
+
+    @keyframes bob {
+      50% {
+        transform: translateY(-3px);
+      }
+    }
+
+    .stage-ico {
+      font-size: 22px;
+    }
+
+    .stage-name {
+      font-size: 11px;
+      font-weight: 700;
+      margin-top: 6px;
+    }
+
+    .stage-model {
+      font-size: 9px;
+      color: var(--muted);
+      margin-top: 2px;
+      letter-spacing: .3px;
+    }
+
+    .stage-load {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+
+    .stage-load>i {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: var(--cyan);
+      border-radius: 2px;
+    }
+
+    .stage.active .stage-load>i {
+      animation: load 1.4s ease-in-out infinite;
+    }
+
+    @keyframes load {
+      0% {
+        width: 0;
+        opacity: 1;
+      }
+
+      80% {
+        width: 100%;
+        opacity: 1;
+      }
+
+      100% {
+        width: 100%;
+        opacity: 0;
+      }
+    }
+
+    .arrow {
+      align-self: center;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .ram-note {
+      font-size: 10px;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 10px;
+      letter-spacing: .4px;
+    }
+
+    .ram-note b {
+      color: var(--cyan);
+    }
+
+    /* ---------- Rules ---------- */
+    .rule {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-bottom: 8px;
+      background: rgba(255, 255, 255, .012);
+      transition: border-color .3s;
+    }
+
+    .rule:hover {
+      border-color: #2a3c5e;
+    }
+
+    .rule.hit {
+      border-color: rgba(239, 68, 68, .5);
+      background: rgba(239, 68, 68, .05);
+    }
+
+    .rule-condition {
+      font-size: 13px;
+    }
+
+    .rule-condition .idx {
+      color: var(--muted);
+      font-family: ui-monospace, monospace;
+      margin-right: 8px;
+      font-size: 11px;
+    }
+
+    .rule-action {
+      font-size: 11px;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 6px;
+      letter-spacing: .5px;
+      white-space: nowrap;
+    }
+
+    .rule-alert {
+      background: rgba(239, 68, 68, .15);
+      color: var(--red);
+    }
+
+    .rule-ignore {
+      background: rgba(34, 197, 94, .12);
+      color: var(--green);
+    }
+
+    /* ---------- Event log ---------- */
+    .events {
+      max-height: 320px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .events::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    .events::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    .event {
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 8px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, .012);
+      animation: slideIn .45s cubic-bezier(.22, 1, .36, 1);
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    .event-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .event-time {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: ui-monospace, monospace;
+      letter-spacing: .5px;
+    }
+
+    .event-badge {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 5px;
+      letter-spacing: .5px;
+    }
+
+    .badge-alert {
+      background: rgba(239, 68, 68, .15);
+      color: var(--red);
+    }
+
+    .badge-clear {
+      background: rgba(34, 197, 94, .12);
+      color: var(--green);
+    }
+
+    .event-desc {
+      font-size: 12.5px;
+      color: var(--text2);
+      line-height: 1.45;
+    }
+
+    .event-tts {
+      font-size: 10.5px;
+      color: var(--cyan);
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .wave {
+      display: inline-flex;
+      gap: 2px;
+      align-items: flex-end;
+      height: 11px;
+    }
+
+    .wave i {
+      width: 2px;
+      background: var(--cyan);
+      border-radius: 1px;
+      animation: wv .9s ease-in-out infinite;
+    }
+
+    .wave i:nth-child(2) {
+      animation-delay: .1s
+    }
+
+    .wave i:nth-child(3) {
+      animation-delay: .2s
+    }
+
+    .wave i:nth-child(4) {
+      animation-delay: .3s
+    }
+
+    .wave i:nth-child(5) {
+      animation-delay: .4s
+    }
+
+    @keyframes wv {
+
+      0%,
+      100% {
+        height: 3px;
+      }
+
+      50% {
+        height: 11px;
+      }
+    }
+
+    .footer {
+      text-align: center;
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+      margin-top: 28px;
+    }
+
+    .footer p {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .footer b {
+      color: var(--text2);
+    }
+
+    .mt16 {
+      margin-top: 16px;
+    }
+
+    /* ---------- Editor (rules + known entities) ---------- */
+    .editor {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .editor input {
+      flex: 1;
+      min-width: 90px;
+      background: #0a1120;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 12px;
+      padding: 9px 11px;
+      font-family: inherit;
+    }
+
+    .editor input:focus {
+      outline: none;
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 2px rgba(6, 182, 212, .15);
+    }
+
+    .editor select {
+      background: #0a1120;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 11px;
+      padding: 9px 8px;
+      font-weight: 700;
+    }
+
+    .editor button {
+      background: linear-gradient(135deg, var(--cyan), #0891b2);
+      border: 0;
+      border-radius: 8px;
+      color: #04141a;
+      font-weight: 800;
+      font-size: 12px;
+      padding: 9px 14px;
+      cursor: pointer;
+      letter-spacing: .3px;
+      transition: filter .2s, transform .1s;
+    }
+
+    .editor button:hover {
+      filter: brightness(1.1);
+    }
+
+    .editor button:active {
+      transform: scale(.97);
+    }
+
+    .editor button:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+    }
+
+    .rule-del {
+      background: none;
+      border: 0;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 15px;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: 5px;
+      transition: color .2s, background .2s;
+    }
+
+    .rule-del:hover {
+      color: var(--red);
+      background: rgba(239, 68, 68, .12);
+    }
+
+    .entity {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-bottom: 8px;
+      background: rgba(34, 197, 94, .04);
+    }
+
+    .entity-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--green);
+    }
+
+    .entity-desc {
+      font-size: 11px;
+      color: var(--text2);
+      margin-top: 2px;
+    }
+
+    .event-recognized {
+      font-size: 10.5px;
+      color: var(--green);
+      margin-top: 6px;
+    }
+
+    .editor-hint {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 8px;
+      letter-spacing: .3px;
+    }
+
+    .empty-note {
+      font-size: 12px;
+      color: var(--muted);
+      padding: 4px 2px;
+    }
+
+    .sim-badge,
+    .live-badge {
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: .5px;
+      padding: 1px 4px;
+      border-radius: 4px;
+      vertical-align: middle;
+    }
+
+    .sim-badge {
+      background: rgba(245, 158, 11, .15);
+      color: var(--amber);
+      border: 1px solid rgba(245, 158, 11, .35);
+    }
+
+    .live-badge {
+      background: rgba(34, 197, 94, .15);
+      color: var(--green);
+      border: 1px solid rgba(34, 197, 94, .35);
+    }
   </style>
 </head>
+
 <body>
   <div class="app">
+    <!-- Header -->
     <div class="header">
-      <div class="logo">🔌</div>
-      <h1>Scarecrow</h1>
-      <p class="subtitle">Off-Grid AI Sentry · Raspberry Pi</p>
-      <div class="pill"><span class="dot"></span>OFFLINE · QVAC</div>
-    </div>
-
-    <div class="status-grid">
-      <div class="stat">
-        <div class="stat-value" style="color: var(--green)">CLEAR</div>
-        <div class="stat-label">Status</div>
+      <div class="brand">
+        <div class="logo">
+          <img src="icon.svg" alt="Logo" style="position: relative; z-index: 2;">
+        </div>
+        <div>
+          <h1>Scarecrow</h1>
+          <p class="subtitle">Off-Grid AI Sentry · Raspberry Pi · QVAC Edge</p>
+        </div>
       </div>
-      <div class="stat">
-        <div class="stat-value" style="color: var(--cyan)">3</div>
-        <div class="stat-label">Events Today</div>
-      </div>
-      <div class="stat">
-        <div class="stat-value" style="color: var(--amber)">78%</div>
-        <div class="stat-label">Battery</div>
-      </div>
-      <div class="stat">
-        <div class="stat-value" style="color: var(--cyan)">1.2 GB</div>
-        <div class="stat-label">RAM Used</div>
+      <div class="head-right">
+        <span class="pill cyan"><span class="dot"></span>100% OFFLINE</span>
+        <span class="pill"><span class="dot"></span>SENTRY ARMED</span>
+        <span class="clock" id="clock">--:--:--</span>
       </div>
     </div>
 
-    <h2>🔒 Active Rules</h2>
-    <div class="rules">
-      <div class="rule">
-        <span class="rule-condition">Person near shed or approaching</span>
-        <span class="rule-action rule-alert">ALERT</span>
-      </div>
-      <div class="rule">
-        <span class="rule-condition">Dog or animal present</span>
-        <span class="rule-action rule-ignore">IGNORE</span>
-      </div>
-      <div class="rule">
-        <span class="rule-condition">Vehicle in driveway</span>
-        <span class="rule-action rule-alert">ALERT</span>
-      </div>
-      <div class="rule">
-        <span class="rule-condition">Bird or small animal on lawn</span>
-        <span class="rule-action rule-ignore">IGNORE</span>
-      </div>
-    </div>
+    <div class="grid">
+      <!-- LEFT: Live feed + pipeline -->
+      <div class="col">
+        <div class="card">
+          <div class="card-title">Live Camera Feed <span class="tag" id="feed-meta">CAM-01 · 1080p · 12fps</span></div>
+          <div class="feed" id="feed">
+            <canvas id="cam"></canvas>
+            <div class="noise"></div>
+            <div class="scanline"></div>
+            <div class="corner tl"></div>
+            <div class="corner tr"></div>
+            <div class="corner bl"></div>
+            <div class="corner br"></div>
+            <div class="hud cam">CAM-01</div>
+            <div class="hud rec">REC</div>
+            <div class="hud loc">LAT 37.42 · LON -122.08 · GRID OFF</div>
+            <!-- bounding box injected here -->
+          </div>
 
-    <h2>📋 Event Log</h2>
-    <div class="events" id="event-log">
-      <div class="event">
-        <div class="event-header">
-          <span class="event-time">14:23:01</span>
-          <span class="event-badge badge-alert">🔴 ALERT</span>
+          <!-- Threat banner -->
+          <div class="banner clear" id="banner">
+            <div class="banner-ico" id="banner-ico">🛡️</div>
+            <div class="banner-main">
+              <div class="banner-state" id="banner-state">PERIMETER CLEAR</div>
+              <div class="banner-desc" id="banner-desc">No threats detected · monitoring 4 active rules</div>
+            </div>
+          </div>
+
+          <div class="stat-row">
+            <div class="stat">
+              <div class="stat-value" style="color:var(--cyan)" id="stat-frames">0</div>
+              <div class="stat-label">Frames</div>
+              <div class="spark"><i style="width:60%;background:var(--cyan)"></i></div>
+            </div>
+            <div class="stat">
+              <div class="stat-value" style="color:var(--amber)" id="stat-batt">78%</div>
+              <div class="stat-label">Battery <span class="sim-badge" id="batt-sim" hidden>SIM</span></div>
+              <div class="spark"><i id="batt-bar" style="width:78%;background:var(--amber)"></i></div>
+            </div>
+            <div class="stat">
+              <div class="stat-value" style="color:var(--green)" id="stat-ram">1.2 GB</div>
+              <div class="stat-label">RAM / 4GB <span class="live-badge" id="ram-live" hidden>RSS</span></div>
+              <div class="spark"><i id="ram-bar" style="width:30%;background:var(--green)"></i></div>
+            </div>
+            <div class="stat">
+              <div class="stat-value" style="color:var(--purple)" id="stat-solar">14 W</div>
+              <div class="stat-label">Solar In <span class="sim-badge" id="solar-sim" hidden>SIM</span></div>
+              <div class="spark"><i id="solar-bar" style="width:70%;background:var(--purple)"></i></div>
+            </div>
+          </div>
         </div>
-        <div class="event-desc">Person in dark clothing approaching shed door. Rule 1 triggered. TTS alert spoken.</div>
+
+        <!-- Inference pipeline -->
+        <div class="card mt16">
+          <div class="card-title">Inference Pipeline <span class="tag">single-model · load → infer → unload</span></div>
+          <div class="pipe">
+            <div class="stage" data-stage="0">
+              <div class="stage-ico">📸</div>
+              <div class="stage-name">Capture</div>
+              <div class="stage-model">Pi Camera</div>
+              <div class="stage-load"><i></i></div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="stage" data-stage="1">
+              <div class="stage-ico">👁️</div>
+              <div class="stage-name">Vision</div>
+              <div class="stage-model">QVAC-Vision-1B</div>
+              <div class="stage-load"><i></i></div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="stage" data-stage="2">
+              <div class="stage-ico">🧠</div>
+              <div class="stage-name">Rules</div>
+              <div class="stage-model">Llama 3.2 1B</div>
+              <div class="stage-load"><i></i></div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="stage" data-stage="3">
+              <div class="stage-ico">🔊</div>
+              <div class="stage-name">Alert</div>
+              <div class="stage-model">Piper TTS</div>
+              <div class="stage-load"><i></i></div>
+            </div>
+          </div>
+          <div class="ram-note">Only <b id="active-model">idle</b> resident in RAM — models unload between stages to
+            stay under <b>4 GB</b></div>
+        </div>
       </div>
-      <div class="event">
-        <div class="event-header">
-          <span class="event-time">13:45:12</span>
-          <span class="event-badge badge-clear">✅ CLEAR</span>
+
+      <!-- RIGHT: Rules + Event log -->
+      <div class="col">
+        <div class="card">
+          <div class="card-title">Active Rules <span class="tag">natural language</span></div>
+          <div id="rules">
+            <div class="rule" data-rule="0">
+              <span class="rule-condition"><span class="idx">01</span>Person near shed or approaching</span>
+              <span class="rule-action rule-alert">ALERT</span>
+            </div>
+            <div class="rule" data-rule="1">
+              <span class="rule-condition"><span class="idx">02</span>Dog or animal present</span>
+              <span class="rule-action rule-ignore">IGNORE</span>
+            </div>
+            <div class="rule" data-rule="2">
+              <span class="rule-condition"><span class="idx">03</span>Vehicle in driveway</span>
+              <span class="rule-action rule-alert">ALERT</span>
+            </div>
+            <div class="rule" data-rule="3">
+              <span class="rule-condition"><span class="idx">04</span>Bird or small animal on lawn</span>
+              <span class="rule-action rule-ignore">IGNORE</span>
+            </div>
+          </div>
+          <div class="editor">
+            <input id="rule-input" type="text" placeholder="e.g. Alert if a person is near the shed"
+              maxlength="120" />
+            <select id="rule-action">
+              <option value="alert">ALERT</option>
+              <option value="ignore">IGNORE</option>
+            </select>
+            <button id="rule-add" type="button">+ Add</button>
+          </div>
+          <div class="editor-hint" id="rule-hint">Plain English · evaluated by Llama 3.2 1B on-device</div>
         </div>
-        <div class="event-desc">Golden retriever on porch. Rule 2: ignored (animal).</div>
-      </div>
-      <div class="event">
-        <div class="event-header">
-          <span class="event-time">11:02:45</span>
-          <span class="event-badge badge-clear">✅ CLEAR</span>
+
+        <div class="card mt16">
+          <div class="card-title">Known Entities <span class="tag">RAG allow-list · GTE-Large</span></div>
+          <div id="entities">
+            <div class="empty-note">No known entities yet — teach Scarecrow what to ignore.</div>
+          </div>
+          <div class="editor">
+            <input id="entity-label" type="text" placeholder="Label · My silver truck" maxlength="40" />
+            <input id="entity-desc" type="text" placeholder="Description · silver Toyota Tacoma pickup"
+              maxlength="120" />
+            <button id="entity-add" type="button">+ Teach</button>
+          </div>
+          <div class="editor-hint">On a match, semantic search suppresses the alert — the owner's car won't trip
+            it.</div>
         </div>
-        <div class="event-desc">Empty yard, no motion detected. No rules matched.</div>
+
+        <div class="card mt16">
+          <div class="card-title">Event Log <span class="tag" id="event-count">live</span></div>
+          <div class="events" id="event-log"></div>
+        </div>
       </div>
     </div>
 
     <div class="footer">
-      <p>Vision: QVAC-Vision-1B · Rules: Llama 3.2 1B · TTS: Piper · 100% Offline</p>
-      <p style="margin-top: 8px;">Served from Pi hotspot · 192.168.4.1:8080</p>
+      <p><b>Vision:</b> QVAC-Vision-1B &nbsp;·&nbsp; <b>Rules:</b> Llama 3.2 1B &nbsp;·&nbsp; <b>TTS:</b> Piper
+        &nbsp;·&nbsp; <b>Engine:</b> @qvac/sdk</p>
+      <p>Served from Pi hotspot · <b>192.168.4.1:8080</b> · Solar + battery · Zero cloud, zero subscription</p>
     </div>
   </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // ---------- Live clock ----------
+      var clock = document.getElementById('clock');
+      function tick() {
+        var d = new Date();
+        var p = function (n) { return String(n).padStart(2, '0'); };
+        clock.textContent = p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+      }
+      setInterval(tick, 1000); tick();
+
+      // ---------- Simulated camera canvas ----------
+      var cv = document.getElementById('cam'), ctx = cv.getContext('2d');
+      function sizeCanvas() {
+        var r = cv.getBoundingClientRect();
+        cv.width = r.width; cv.height = r.height;
+      }
+      window.addEventListener('resize', sizeCanvas); sizeCanvas();
+
+      // drifting "thermal" blobs to make the feed feel alive
+      var blobs = [];
+      for (var i = 0; i < 7; i++) {
+        blobs.push({
+          x: Math.random(), y: Math.random(),
+          vx: (Math.random() - .5) * .0008, vy: (Math.random() - .5) * .0008,
+          r: 40 + Math.random() * 90, h: 180 + Math.random() * 40
+        });
+      }
+      function drawFeed() {
+        var w = cv.width, h = cv.height;
+        ctx.clearRect(0, 0, w, h);
+        // ground gradient
+        var g = ctx.createLinearGradient(0, 0, 0, h);
+        g.addColorStop(0, 'rgba(20,50,72,.5)');
+        g.addColorStop(1, 'rgba(7,13,24,.9)');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+        // perspective floor lines
+        ctx.strokeStyle = 'rgba(6,182,212,.10)'; ctx.lineWidth = 1;
+        for (var k = 1; k <= 6; k++) {
+          var y = h * (0.45 + k * 0.09);
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        }
+        // soft moving blobs
+        ctx.globalCompositeOperation = 'lighter';
+        blobs.forEach(function (b) {
+          b.x += b.vx; b.y += b.vy;
+          if (b.x < 0 || b.x > 1) b.vx *= -1;
+          if (b.y < 0 || b.y > 1) b.vy *= -1;
+          var rg = ctx.createRadialGradient(b.x * w, b.y * h, 0, b.x * w, b.y * h, b.r);
+          rg.addColorStop(0, 'hsla(' + b.h + ',70%,55%,.20)');
+          rg.addColorStop(1, 'hsla(' + b.h + ',70%,55%,0)');
+          ctx.fillStyle = rg;
+          ctx.beginPath(); ctx.arc(b.x * w, b.y * h, b.r, 0, 7); ctx.fill();
+        });
+        ctx.globalCompositeOperation = 'source-over';
+        requestAnimationFrame(drawFeed);
+      }
+      drawFeed();
+
+      // ---------- Scenario data ----------
+      var scenarios = [
+        {
+          kind: 'alert', rule: 0, label: 'PERSON · 0.94', box: [0.30, 0.34, 0.22, 0.55],
+          scene: 'Person in dark clothing approaching shed door from the east fence line.',
+          tts: 'Alert. Person detected near the shed.'
+        },
+        {
+          kind: 'clear', rule: 1, label: 'DOG · 0.88', box: [0.55, 0.62, 0.26, 0.28],
+          scene: 'Golden retriever crossing the porch. Matches ignore rule (animal).',
+          tts: null
+        },
+        {
+          kind: 'alert', rule: 2, label: 'VEHICLE · 0.91', box: [0.18, 0.50, 0.45, 0.34],
+          scene: 'Unrecognised pickup truck pulling into the driveway.',
+          tts: 'Alert. Vehicle detected in the driveway.'
+        },
+        {
+          kind: 'clear', rule: 3, label: 'BIRD · 0.79', box: [0.62, 0.30, 0.14, 0.16],
+          scene: 'Crow landed on the lawn near the feeder. Ignored (small animal).',
+          tts: null
+        },
+        {
+          kind: 'clear', rule: -1, label: null, box: null,
+          scene: 'Empty yard, gentle wind in the trees. No rules matched.',
+          tts: null
+        }
+      ];
+
+      var feed = document.getElementById('feed');
+      var banner = document.getElementById('banner');
+      var bannerIco = document.getElementById('banner-ico');
+      var bannerState = document.getElementById('banner-state');
+      var bannerDesc = document.getElementById('banner-desc');
+      var stages = document.querySelectorAll('.stage');
+      var rules = document.querySelectorAll('.rule');
+      var activeModel = document.getElementById('active-model');
+      var log = document.getElementById('event-log');
+
+      var frames = 0;
+      var statFrames = document.getElementById('stat-frames');
+
+      function nowStr() {
+        var d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
+        return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+      }
+
+      function setStage(idx, modelName) {
+        stages.forEach(function (s, i) { s.classList.toggle('active', i === idx); });
+        activeModel.textContent = modelName || 'idle';
+      }
+
+      function drawBox(sc) {
+        var old = feed.querySelector('.bbox'); if (old) old.remove();
+        if (!sc.box) return;
+        var b = document.createElement('div');
+        b.className = 'bbox' + (sc.kind === 'clear' ? ' safe' : '');
+        b.style.left = (sc.box[0] * 100) + '%';
+        b.style.top = (sc.box[1] * 100) + '%';
+        b.style.width = (sc.box[2] * 100) + '%';
+        b.style.height = (sc.box[3] * 100) + '%';
+        b.innerHTML = '<span class="label">' + (sc.label || '') + '</span>';
+        feed.appendChild(b);
+      }
+
+      function pushEvent(sc) {
+        var alert = sc.kind === 'alert';
+        var ev = document.createElement('div');
+        ev.className = 'event';
+        var tts = sc.tts ? '<div class="event-tts"><span class="wave"><i></i><i></i><i></i><i></i><i></i></span> Piper TTS: “' + sc.tts + '”</div>' : '';
+        ev.innerHTML =
+          '<div class="event-header">' +
+          '<span class="event-time">' + nowStr() + '</span>' +
+          '<span class="event-badge ' + (alert ? 'badge-alert' : 'badge-clear') + '">' +
+          (alert ? '🔴 ALERT' : '✅ CLEAR') + '</span>' +
+          '</div>' +
+          '<div class="event-desc">' + sc.scene + '</div>' + tts;
+        log.insertBefore(ev, log.firstChild);
+        while (log.children.length > 12) log.removeChild(log.lastChild);
+      }
+
+      function highlightRule(idx) {
+        rules.forEach(function (r, i) { r.classList.toggle('hit', i === idx); });
+      }
+
+      // ---------- The sentry loop ----------
+      var si = 0;
+      function runCycle() {
+        var sc = scenarios[si % scenarios.length]; si++;
+
+        // 1. capture
+        setStage(0, 'Pi Camera');
+        var burst = setInterval(function () { frames++; statFrames.textContent = frames; }, 60);
+
+        setTimeout(function () {
+          clearInterval(burst);
+          // 2. vision
+          setStage(1, 'QVAC-Vision-1B');
+        }, 900);
+
+        setTimeout(function () {
+          // 3. rules
+          setStage(2, 'Llama 3.2 1B');
+          drawBox(sc);
+          highlightRule(sc.rule);
+        }, 2100);
+
+        setTimeout(function () {
+          // resolve
+          var alert = sc.kind === 'alert';
+          banner.className = 'banner ' + (alert ? 'alert' : 'clear');
+          bannerIco.textContent = alert ? '🚨' : '🛡️';
+          bannerState.textContent = alert ? 'THREAT DETECTED' : 'PERIMETER CLEAR';
+          bannerDesc.textContent = alert
+            ? sc.scene
+            : 'No threats detected · monitoring 4 active rules';
+
+          if (alert && sc.tts) {
+            setStage(3, 'Piper TTS');     // 4. speak
+          } else {
+            setStage(-1, 'idle');
+          }
+          pushEvent(sc);
+        }, 3300);
+
+        setTimeout(function () {
+          // sleep between checks
+          setStage(-1, 'idle');
+          highlightRule(-1);
+          banner.className = 'banner clear';
+          bannerIco.textContent = '🛡️';
+          bannerState.textContent = 'PERIMETER CLEAR';
+          bannerDesc.textContent = 'Sleeping · next check in a moment · power saving';
+          var old = feed.querySelector('.bbox'); if (old) old.style.opacity = '0';
+        }, 4700);
+      }
+      var simCycleTimer = null, simDriftTimer = null;
+      function startSimulation() {
+        runCycle();
+        simCycleTimer = setInterval(runCycle, 6200);
+        simDriftTimer = setInterval(driftTelemetry, 1200);
+      }
+      function stopSimulation() {
+        if (simCycleTimer) { clearInterval(simCycleTimer); simCycleTimer = null; }
+        if (simDriftTimer) { clearInterval(simDriftTimer); simDriftTimer = null; }
+      }
+
+      // ---------- Telemetry drift (simulation fallback) ----------
+      var batt = 78, solar = 14;
+      var statBatt = document.getElementById('stat-batt'), battBar = document.getElementById('batt-bar');
+      var statSolar = document.getElementById('stat-solar'), solarBar = document.getElementById('solar-bar');
+      var statRam = document.getElementById('stat-ram'), ramBar = document.getElementById('ram-bar');
+      function setBattBar(pct) {
+        battBar.style.width = pct + '%';
+        battBar.style.background = pct < 50 ? 'var(--red)' : pct < 70 ? 'var(--amber)' : 'var(--green)';
+      }
+      function setRamBar(gb) {
+        statRam.textContent = gb.toFixed(1) + ' GB';
+        ramBar.style.width = (gb / 4 * 100) + '%';
+        ramBar.style.background = gb > 3 ? 'var(--amber)' : 'var(--green)';
+      }
+      function driftTelemetry() {
+        solar = Math.max(6, Math.min(22, solar + (Math.random() - .45) * 2));
+        batt = Math.max(40, Math.min(99, batt + (solar > 13 ? 0.05 : -0.08)));
+        statBatt.textContent = batt.toFixed(0) + '%';
+        setBattBar(batt);
+        statSolar.textContent = solar.toFixed(0) + ' W';
+        solarBar.style.width = (solar / 22 * 100) + '%';
+        var resident = activeModel.textContent;
+        var gb = resident === 'idle' ? 0.4 : resident.indexOf('Vision') >= 0 ? 2.6 : resident.indexOf('Llama') >= 0 ? 1.9 : 0.9;
+        setRamBar(gb);
+      }
+
+      // ---------- Live API mode (with graceful fallback to simulation) ----------
+      var STAGE_IDX = { idle: -1, capture: 0, vision: 1, rules: 2, alert: 3 };
+      var liveMode = false;
+      var liveModel = document.querySelector('.pill.cyan');
+
+      var battSim = document.getElementById('batt-sim');
+      var solarSim = document.getElementById('solar-sim');
+      var ramLive = document.getElementById('ram-live');
+      function renderLiveStatus(s) {
+        setStage(STAGE_IDX[s.stage] != null ? STAGE_IDX[s.stage] : -1, s.activeModel);
+        statFrames.textContent = s.framesProcessed;
+        statBatt.textContent = s.batteryPct + '%';
+        setBattBar(s.batteryPct);
+        statSolar.textContent = s.solarWatts + ' W';
+        solarBar.style.width = (s.solarWatts / 22 * 100) + '%';
+        setRamBar(s.ramUsedGB);
+        // Honesty badges: real measured RSS vs modelled battery/solar.
+        battSim.hidden = !s.powerSimulated;
+        solarSim.hidden = !s.powerSimulated;
+        ramLive.hidden = false; // RAM is always real measured RSS in live mode
+        var alerting = s.stage === 'alert' || (s.lastEvent && s.lastEvent.alerted && s.stage !== 'idle');
+        banner.className = 'banner ' + (alerting ? 'alert' : 'clear');
+        bannerIco.textContent = alerting ? '🚨' : '🛡️';
+        bannerState.textContent = alerting ? 'THREAT DETECTED' : (s.armed ? 'PERIMETER CLEAR' : 'SENTRY DISARMED');
+        bannerDesc.textContent = s.lastEvent ? s.lastEvent.sceneDescription
+          : 'Monitoring · ' + s.eventsToday + ' events today';
+      }
+
+      function esc(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function renderLiveEvents(events) {
+        log.innerHTML = '';
+        events.slice(-12).reverse().forEach(function (e) {
+          var ev = document.createElement('div');
+          ev.className = 'event';
+          var t = (e.timestamp || '').slice(11, 19) || nowStr();
+          var recognized = e.recognizedEntity
+            ? '<div class="event-recognized">🧩 Recognised known entity: ' + esc(e.recognizedEntity) + ' — alert suppressed</div>'
+            : '';
+          ev.innerHTML =
+            '<div class="event-header">' +
+            '<span class="event-time">' + t + '</span>' +
+            '<span class="event-badge ' + (e.alerted ? 'badge-alert' : 'badge-clear') + '">' +
+            (e.alerted ? '🔴 ALERT' : '✅ CLEAR') + '</span>' +
+            '</div>' +
+            '<div class="event-desc">' + esc(e.sceneDescription) + '</div>' + recognized;
+          log.appendChild(ev);
+        });
+      }
+
+      function renderLiveRules(serverRules) {
+        var container = document.getElementById('rules');
+        if (!container) return;
+        container.innerHTML = '';
+        if (!serverRules.length) {
+          container.innerHTML = '<div class="empty-note">No rules yet — add one below.</div>';
+          return;
+        }
+        serverRules.forEach(function (r, i) {
+          var alert = r.action === 'alert';
+          var el = document.createElement('div');
+          el.className = 'rule'; el.setAttribute('data-rule', i);
+          el.innerHTML =
+            '<span class="rule-condition"><span class="idx">' + String(i + 1).padStart(2, '0') +
+            '</span>' + esc(r.condition) + '</span>' +
+            '<span style="display:flex;align-items:center;gap:8px">' +
+            '<span class="rule-action ' + (alert ? 'rule-alert' : 'rule-ignore') + '">' +
+            (alert ? 'ALERT' : 'IGNORE') + '</span>' +
+            '<button class="rule-del" title="Delete rule" data-del-rule="' + esc(r.id) + '">✕</button>' +
+            '</span>';
+          container.appendChild(el);
+        });
+        rules = document.querySelectorAll('.rule');
+      }
+
+      function renderLiveEntities(entities) {
+        var container = document.getElementById('entities');
+        if (!container) return;
+        container.innerHTML = '';
+        if (!entities.length) {
+          container.innerHTML = '<div class="empty-note">No known entities yet — teach Scarecrow what to ignore.</div>';
+          return;
+        }
+        entities.forEach(function (e) {
+          var el = document.createElement('div');
+          el.className = 'entity';
+          el.innerHTML =
+            '<div><div class="entity-label">🧩 ' + esc(e.label) + '</div>' +
+            '<div class="entity-desc">' + esc(e.description) + '</div></div>' +
+            '<button class="rule-del" title="Forget entity" data-del-entity="' + esc(e.id) + '">✕</button>';
+          container.appendChild(el);
+        });
+      }
+
+      function enterLiveMode() {
+        if (liveMode) return;
+        liveMode = true;
+        stopSimulation();
+        if (liveModel) liveModel.innerHTML = '<span class="dot"></span>LIVE · QVAC';
+        document.getElementById('event-count').textContent = 'live · API';
+      }
+
+      // ---- Mutations (work only in LIVE mode; surface a hint otherwise) ----
+      var ruleHint = document.getElementById('rule-hint');
+      async function api(method, path, body) {
+        var res = await fetch(path, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: body ? JSON.stringify(body) : undefined
+        });
+        return res.json().catch(function () { return {}; });
+      }
+      function needLive() {
+        if (!liveMode) {
+          ruleHint.textContent = '⚠ Start the server (npm start) to edit rules — this is the offline preview.';
+          ruleHint.style.color = 'var(--amber)';
+          return true;
+        }
+        return false;
+      }
+      async function addRule() {
+        if (needLive()) return;
+        var input = document.getElementById('rule-input');
+        var cond = input.value.trim();
+        if (!cond) return;
+        await api('POST', '/api/rules', { condition: cond, action: document.getElementById('rule-action').value });
+        input.value = '';
+        poll();
+      }
+      async function addEntity() {
+        if (needLive()) return;
+        var label = document.getElementById('entity-label');
+        var desc = document.getElementById('entity-desc');
+        if (!label.value.trim() || !desc.value.trim()) return;
+        await api('POST', '/api/entities', { label: label.value.trim(), description: desc.value.trim() });
+        label.value = ''; desc.value = '';
+        poll();
+      }
+      document.getElementById('rule-add').addEventListener('click', addRule);
+      document.getElementById('rule-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') addRule(); });
+      document.getElementById('entity-add').addEventListener('click', addEntity);
+      document.addEventListener('click', async function (e) {
+        var rd = e.target.getAttribute && e.target.getAttribute('data-del-rule');
+        var ed = e.target.getAttribute && e.target.getAttribute('data-del-entity');
+        if (rd) { await api('DELETE', '/api/rules/' + encodeURIComponent(rd)); poll(); }
+        if (ed) { await api('DELETE', '/api/entities/' + encodeURIComponent(ed)); poll(); }
+      });
+
+      async function poll() {
+        try {
+          var res = await fetch('/api/status', { cache: 'no-store' });
+          if (!res.ok) throw new Error('status ' + res.status);
+          var status = await res.json();
+          enterLiveMode();
+          renderLiveStatus(status);
+          var ev = await fetch('/api/events', { cache: 'no-store' }).then(function (r) { return r.json(); });
+          renderLiveEvents(ev.events || []);
+          var ru = await fetch('/api/rules', { cache: 'no-store' }).then(function (r) { return r.json(); });
+          renderLiveRules(ru.rules || []);
+          var en = await fetch('/api/entities', { cache: 'no-store' }).then(function (r) { return r.json(); });
+          renderLiveEntities(en.entities || []);
+        } catch (err) {
+          // No server reachable (opened as file:// or static demo) → keep simulation.
+          if (!liveMode && !simCycleTimer) startSimulation();
+        }
+      }
+
+      // Probe once immediately; if the API answers we go LIVE, otherwise simulate.
+      poll();
+      setTimeout(function () { if (!liveMode && !simCycleTimer) startSimulation(); }, 1200);
+      setInterval(poll, 2000);
+    })();
+  </script>
 </body>
+
 </html>
