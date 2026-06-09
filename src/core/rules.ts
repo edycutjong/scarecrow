@@ -6,10 +6,36 @@ export interface Rule {
   action: "alert" | "ignore";
 }
 
-export const activeRules: Rule[] = [
+export let activeRules: Rule[] = [
   { id: "1", condition: "A person is near the shed or approaching", action: "alert" },
   { id: "2", condition: "A dog or animal is present", action: "ignore" }
 ];
+
+export function setActiveRules(rules: Rule[]) {
+  activeRules = rules;
+}
+
+/** Add a natural-language rule (e.g. from the dashboard). Returns the created rule. */
+export function addRule(condition: string, action: "alert" | "ignore"): Rule {
+  const trimmed = (condition ?? "").trim();
+  if (!trimmed) throw new Error("Rule condition cannot be empty");
+  if (action !== "alert" && action !== "ignore") {
+    throw new Error(`Invalid action '${action}' (expected 'alert' or 'ignore')`);
+  }
+  const nextId = String(
+    activeRules.reduce((max, r) => Math.max(max, Number(r.id) || 0), 0) + 1
+  );
+  const rule: Rule = { id: nextId, condition: trimmed, action };
+  activeRules = [...activeRules, rule];
+  return rule;
+}
+
+/** Remove a rule by id. Returns true if a rule was removed. */
+export function removeRule(id: string): boolean {
+  const before = activeRules.length;
+  activeRules = activeRules.filter((r) => r.id !== id);
+  return activeRules.length < before;
+}
 
 export async function evaluateRules(sceneDescription: string): Promise<{ matchedRule: Rule | null, shouldAlert: boolean }> {
   const modelId = await loadLLMModel(LLAMA_MODEL_ID);
@@ -35,7 +61,7 @@ Respond ONLY with JSON: {"matchedRuleId": "1", "action": "alert" | "ignore"}`;
     const result = JSON.parse(response.text);
     const rule = activeRules.find(r => r.id === result.matchedRuleId) || null;
     return { matchedRule: rule, shouldAlert: result.action === "alert" };
-  } catch (err) {
+  } catch {
     // Fallback: simple keyword matching if JSON parse fails
     const lowerScene = sceneDescription.toLowerCase();
     if (lowerScene.includes("person") || lowerScene.includes("human")) {
