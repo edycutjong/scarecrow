@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { exec } from "child_process";
 
 // Mock @qvac/sdk
 const mockLoadModel = vi.fn();
@@ -9,6 +10,18 @@ const mockRagIngest = vi.fn();
 const mockRagSearch = vi.fn();
 const mockStartQVACProvider = vi.fn();
 const mockStopQVACProvider = vi.fn();
+
+vi.mock("child_process", () => ({
+  exec: vi.fn((cmd: string, cb: any) => cb(null, { stdout: "", stderr: "" }))
+}));
+vi.mock("fs/promises", () => ({
+  default: {
+    readFile: async () => Buffer.from("simulated_image_data"),
+    unlink: async () => {}
+  },
+  readFile: async () => Buffer.from("simulated_image_data"),
+  unlink: async () => {}
+}));
 
 vi.mock("@qvac/sdk", () => ({
   loadModel: (...args: any[]) => mockLoadModel(...args),
@@ -105,6 +118,15 @@ describe("Scarecrow Core Module", () => {
       const frame = await captureFrame();
       expect(frame).not.toBeNull();
       expect(frame?.toString()).toBe("simulated_image_data");
+    });
+
+    it("should handle captureFrame failure", async () => {
+      vi.mocked(exec).mockImplementationOnce(((cmd: string, cb: any) => {
+        cb(new Error("Camera error"));
+        return {} as any;
+      }) as any);
+      const frame = await captureFrame();
+      expect(frame).toBeNull();
     });
 
     it("should analyze scene image using vision model", async () => {
@@ -212,6 +234,30 @@ describe("Scarecrow Core Module", () => {
       await expect(wakeAndCheck()).resolves.not.toThrow();
     });
 
+    it("suppresses alert if known entity matches", async () => {
+      mockLoadModel.mockResolvedValue("rules-model-id");
+      mockCompletion.mockResolvedValue({
+        text: Promise.resolve(JSON.stringify({ matchedRuleId: "1", action: "alert" })),
+      });
+      // Mock memory.ts checkKnownEntity implicitly via mockRagSearch
+      const { registerKnownEntity, removeKnownEntity } = await import("../memory.js");
+      const e = registerKnownEntity({ label: "bob", description: "friend" });
+      mockRagSearch.mockResolvedValue([{ content: "bob: friend", score: 0.9 }]);
+      const event = await wakeAndCheck();
+      expect(event.alerted).toBe(false);
+      expect(event.recognizedEntity).toBe("bob");
+      removeKnownEntity(e.id);
+    });
+
+    it("hydrates event log", async () => {
+      const fs = await import("fs/promises");
+      const readFileSpy = vi.spyOn(fs.default, "readFile").mockResolvedValue(`{"timestamp":"1","sceneDescription":"old","matchedRuleId":null,"alerted":false}`);
+      const { hydrateEventLog } = await import("../power.js");
+      const count = await hydrateEventLog();
+      expect(count).toBe(1);
+      readFileSpy.mockRestore();
+    });
+
     it("should start and stop sentry loop scheduling", async () => {
       // Set up mocks so wakeAndCheck completes cleanly when timer fires
       mockLoadModel.mockResolvedValue("rules-model-id");
@@ -229,6 +275,39 @@ describe("Scarecrow Core Module", () => {
       expect(consoleWarnSpy).toHaveBeenCalledWith("[power] Sentry loop already running.");
 
       stopSentryLoop();
+    });
+
+    it("should start and stop PIR sentry loop, covering busy state and errors", async () => {
+      const { startPIRSentry, getSystemStatus } = await import("../power.js");
+      vi.useFakeTimers();
+
+      // We make the captureFrameMock throw so we can cover the catch block in startPIRSentry
+      (globalThis as any).captureFrameMockImpl = vi.fn().mockRejectedValue(new Error("PIR Capture Fail"));
+
+      const stopPIR = startPIRSentry({ simulate: true, simulateIntervalMs: 100 });
+      expect(getSystemStatus().stage).toBe("idle");
+
+      // Advance by 150ms to trigger the PIR interval. The wakeAndCheck runs async and fails.
+      await vi.advanceTimersByTimeAsync(150);
+      expect(consoleErrorSpy).toHaveBeenCalledWith("[power] PIR sentry check error:", expect.any(Error));
+
+      // Now test the busy check. We will mock captureFrame to return a promise that never resolves yet.
+      let resolveCapture: any;
+      const capturePromise = new Promise((r) => { resolveCapture = r; });
+      (globalThis as any).captureFrameMockImpl = vi.fn().mockReturnValue(capturePromise);
+      
+      // Advance timers to trigger another PIR event. This will make `busy = true`.
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Advance again while it's busy, so the PIR callback returns early without throwing.
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Let it finish
+      resolveCapture(null);
+      await Promise.resolve(); // flush microtasks
+
+      stopPIR();
+      vi.useRealTimers();
     });
 
     it("should log error when wakeAndCheck throws inside sentry loop", async () => {
