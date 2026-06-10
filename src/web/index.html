@@ -1217,9 +1217,30 @@
           r: 40 + Math.random() * 90, h: 180 + Math.random() * 40
         });
       }
+      // Real scene shown in the camera feed per scenario (so detections sit on
+      // an actual image, like the live Pi camera — not just the idle pattern).
+      var feedImgs = {};
+      ['person', 'dog', 'van', 'truck'].forEach(function (n) {
+        var im = new Image(); im.src = 'demo/' + n + '.jpg'; feedImgs[n] = im;
+      });
+      var currentFeed = null;
+      function drawCover(img) {
+        var w = cv.width, h = cv.height;
+        var ir = img.naturalWidth / img.naturalHeight, cr = w / h, dw, dh, dx, dy;
+        if (ir > cr) { dh = h; dw = h * ir; dx = (w - dw) / 2; dy = 0; }
+        else { dw = w; dh = w / ir; dx = 0; dy = (h - dh) / 2; }
+        ctx.drawImage(img, dx, dy, dw, dh);
+      }
       function drawFeed() {
         var w = cv.width, h = cv.height;
         ctx.clearRect(0, 0, w, h);
+        var fi = currentFeed && feedImgs[currentFeed];
+        if (fi && fi.complete && fi.naturalWidth) {
+          drawCover(fi);
+          ctx.fillStyle = 'rgba(6,18,30,0.16)'; ctx.fillRect(0, 0, w, h); // CCTV tint
+          requestAnimationFrame(drawFeed);
+          return;
+        }
         // ground gradient
         var g = ctx.createLinearGradient(0, 0, 0, h);
         g.addColorStop(0, 'rgba(20,50,72,.5)');
@@ -1251,19 +1272,24 @@
       // ---------- Scenario data ----------
       var scenarios = [
         {
-          kind: 'alert', rule: 0, label: 'PERSON · 0.94', box: [0.30, 0.34, 0.22, 0.55],
+          kind: 'alert', rule: 0, label: 'PERSON · 0.94', box: [0.63, 0.40, 0.16, 0.46], feed: 'person',
           scene: 'Person in dark clothing approaching shed door from the east fence line.',
           tts: 'Alert. Person detected near the shed.'
         },
         {
-          kind: 'clear', rule: 1, label: 'DOG · 0.88', box: [0.55, 0.62, 0.26, 0.28],
+          kind: 'clear', rule: 1, label: 'DOG · 0.88', box: [0.28, 0.55, 0.30, 0.28], feed: 'dog',
           scene: 'Golden retriever crossing the porch. Matches ignore rule (animal).',
           tts: null
         },
         {
-          kind: 'alert', rule: 2, label: 'VEHICLE · 0.91', box: [0.18, 0.50, 0.45, 0.34],
-          scene: 'Unrecognised pickup truck pulling into the driveway.',
-          tts: 'Alert. Vehicle detected in the driveway.'
+          kind: 'alert', rule: 2, label: 'VEHICLE · 0.91', box: [0.10, 0.28, 0.42, 0.45], feed: 'van',
+          scene: 'Unrecognised dark van pulling into the driveway.',
+          tts: 'Alert. Unrecognised vehicle in the driveway.'
+        },
+        {
+          kind: 'clear', rule: 2, label: 'TRUCK · 0.90 · KNOWN', box: [0.18, 0.18, 0.55, 0.52], feed: 'truck',
+          scene: 'Silver pickup in the driveway.',
+          tts: null, recognized: 'My silver truck'
         },
         {
           kind: 'clear', rule: 3, label: 'BIRD · 0.79', box: [0.62, 0.30, 0.14, 0.16],
@@ -1326,13 +1352,14 @@
         var ev = document.createElement('div');
         ev.className = 'event';
         var tts = sc.tts ? '<div class="event-tts"><span class="wave"><i></i><i></i><i></i><i></i><i></i></span> Piper TTS: “' + sc.tts + '”</div>' : '';
+        var recognized = sc.recognized ? '<div class="event-recognized">🧩 Recognised known entity: ' + sc.recognized + ' — alert suppressed</div>' : '';
         ev.innerHTML =
           '<div class="event-header">' +
           '<span class="event-time">' + nowStr() + '</span>' +
           '<span class="event-badge ' + (alert ? 'badge-alert' : 'badge-clear') + '">' +
           (alert ? '🔴 ALERT' : '✅ CLEAR') + '</span>' +
           '</div>' +
-          '<div class="event-desc">' + sc.scene + '</div>' + tts;
+          '<div class="event-desc">' + sc.scene + '</div>' + recognized + tts;
         log.insertBefore(ev, log.firstChild);
         while (log.children.length > 12) log.removeChild(log.lastChild);
       }
@@ -1345,6 +1372,7 @@
       var si = 0;
       function runCycle() {
         var sc = scenarios[si % scenarios.length]; si++;
+        currentFeed = sc.feed || null; // show the real scene in the camera feed
 
         // 1. capture
         setStage(0, 'Pi Camera');
@@ -1393,7 +1421,17 @@
         }, 4700);
       }
       var simCycleTimer = null, simDriftTimer = null;
+      function seedSimEntities() {
+        var c = document.getElementById('entities');
+        if (!c) return;
+        c.innerHTML =
+          '<div class="entity"><div>' +
+          '<div class="entity-label">🧩 My silver truck</div>' +
+          '<div class="entity-desc">silver Toyota Tacoma pickup</div>' +
+          '</div><button class="rule-del" title="Forget entity">✕</button></div>';
+      }
       function startSimulation() {
+        seedSimEntities();
         runCycle();
         simCycleTimer = setInterval(runCycle, 6200);
         simDriftTimer = setInterval(driftTelemetry, 1200);

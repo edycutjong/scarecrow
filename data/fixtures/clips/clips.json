@@ -1,0 +1,50 @@
+{
+  "note": "Camera-stimulus clips for the demo. Each clip is the SCENE the Pi camera looks at; the inference, dashboard, spoken alert and RAM readout must be REAL and recorded live. Source every clip from material you own or are licensed to use (own recording / CC / commercial-free stock / AI-generated). Download ahead of time and play OFFLINE — never a live internet feed.",
+  "clips": [
+    {
+      "file": "person_near_shed.mp4",
+      "expected_alert": true,
+      "expected_rule": "1",
+      "description": "Person in dark clothing approaching the shed door",
+      "source": "TODO: own | stock | ai",
+      "license": "TODO",
+      "attribution": ""
+    },
+    {
+      "file": "dog_past_shed.mp4",
+      "expected_alert": false,
+      "expected_rule": "2",
+      "description": "Dog trotting across the yard past the shed (ignored: animal)",
+      "source": "TODO: own | stock | ai",
+      "license": "TODO",
+      "attribution": ""
+    },
+    {
+      "file": "vehicle_driveway.mp4",
+      "expected_alert": true,
+      "expected_rule": "3",
+      "description": "Unrecognised vehicle pulling into the driveway",
+      "source": "TODO: own | stock | ai",
+      "license": "TODO",
+      "attribution": ""
+    },
+    {
+      "file": "empty_yard.mp4",
+      "expected_alert": false,
+      "expected_rule": null,
+      "description": "Empty yard, wind in the trees (no rule matched)",
+      "source": "TODO: own | stock | ai",
+      "license": "TODO",
+      "attribution": ""
+    },
+    {
+      "file": "known_truck.mp4",
+      "expected_alert": false,
+      "expected_rule": "3",
+      "description": "Owner's silver truck — suppressed by the RAG known-entity allow-list after teaching",
+      "source": "TODO: own | stock | ai",
+      "license": "TODO",
+      "attribution": ""
+    }
+  ]
+}

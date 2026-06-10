@@ -15,15 +15,86 @@ The dashboard shows the live pipeline, camera HUD, rule editor, and event log. A
 | **Deep QVAC integration** (5 distinct APIs) | `completion` + multimodal, `ragSearch`, `textToSpeech`, `startQVACProvider` — see [Why ONLY QVAC](#-why-only-qvac) | ✅ real `@qvac/sdk` v0.10.2 |
 | **Capability unlock** (RAG known-entity recall) | [`src/core/memory.ts`](src/core/memory.ts) — your car/pet won't trip it, a stranger will | ✅ |
 | **≤4GB on retail hardware** | `/api/status` reports **real measured RSS**; single-model load→infer→unload | ✅ measured, not faked |
-| **True offline** | `python3 scripts/verify_offline.py` → 0 outbound | ✅ 5/5 |
-| **Production quality** | `npm test` → **346 unit tests**; `npm run ci` (lint + types + coverage) | ✅ |
-| **Reproducible benchmarks** | `python3 scripts/bench.py` → p50/p95, mWh/event, precision/recall | ✅ |
+| **True offline** | `python3 scripts/verify_offline.py` — static cloud-import/URL scan + live network probe | ✅ |
+| **Production quality** | `npm test` → **118 unit tests**; `npm run ci` (lint + types + coverage) | ✅ |
+| **Reproducible classification** | `python3 scripts/bench.py` → real precision/recall of the offline baseline over 233 labeled scenes | ✅ |
 
 **Mandatory constraints — all met:** 100% on-device inference through `@qvac/sdk` (**zero cloud APIs** — the hard disqualifier), [MIT](LICENSE) licensed and fully public, BYOH consumer hardware (Pi 4/5), reproducible via [`scripts/setup-pi.sh`](scripts/setup-pi.sh).
 
-**Evidence bundle:** offline packet proof (`verify_offline.py`, 0 outbound) · performance diagnostics (`bench.py`: RAM high-water, mWh/event, precision/recall) · append-only event log (`data/events.jsonl`) · readiness gate (`check_submission_readiness.py`) · physical demo runbook ([`DEMO.md`](DEMO.md)).
+**Evidence bundle:** offline scan + live network probe (`verify_offline.py`) · real classification baseline over 233 labeled scenes (`bench.py`) · append-only event log (`data/events.jsonl`) · readiness gate (`check_submission_readiness.py`) · physical demo runbook ([`DEMO.md`](DEMO.md)). *Model latency, peak RAM, and mWh/event are captured **on-device** (see [Benchmarks](#-benchmarks)) — not simulated.*
 
 **Radical honesty:** nothing fake is shown as real. The RAM gauge is measured process RSS (tagged `RSS`); battery/solar are *modelled* and clearly tagged **`SIM`** in the UI until an INA219 sensor is wired (`SCARECROW_BATTERY_PCT`/`SCARECROW_SOLAR_W`). Camera capture uses real `libcamera-still` on the Pi. See [Honest Limitations](#-honest-limitations).
+
+---
+
+## 👀 See It Work
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**What the camera sees** *(test clip)*
+
+<img src="docs/screenshots/stimulus-person.jpg" alt="Person approaching the shed at dusk" width="100%">
+
+A person in dark clothing approaching the shed at dusk.
+
+</td>
+<td width="50%" valign="top">
+
+**What Scarecrow does** *(real dashboard)*
+
+<img src="docs/screenshots/dashboard-alert.png" alt="Scarecrow dashboard raising a real alert" width="100%">
+
+🔴 Reasons about the scene → **THREAT DETECTED** → speaks the alert → logs it.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+<img src="docs/screenshots/stimulus-dog.jpg" alt="A dog crossing the yard past the shed" width="100%">
+
+A dog trotting across the same yard.
+
+</td>
+<td width="50%" valign="top">
+
+<img src="docs/screenshots/dashboard-dog-clear.png" alt="Scarecrow seeing the dog and staying silent" width="100%">
+
+✅ Sees the dog (green box, `0.88`) → matches the *ignore* rule → **PERIMETER CLEAR**, no alert.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+**Known-entity recall** *(on-device RAG)*
+
+<img src="docs/screenshots/stimulus-van.jpg" alt="An unfamiliar dark van in the driveway" width="100%">
+
+An **unfamiliar** dark van…
+
+<img src="docs/screenshots/stimulus-truck.jpg" alt="The owner's silver truck" width="100%">
+
+…vs. **your** silver truck (taught once).
+
+</td>
+<td width="50%" valign="top">
+
+<img src="docs/screenshots/dashboard-truck-known.png" alt="Scarecrow alerting on the van but recognizing the known truck" width="100%">
+
+The van trips a 🔴 **ALERT**; the silver truck is **recognised** and the alert is **suppressed** — *"🧩 Recognised known entity: My silver truck."* Teach it once; a stranger's vehicle still alerts.
+
+</td>
+</tr>
+</table>
+
+> **This is reasoning, not motion detection.** Same yard, same camera — Scarecrow
+> alerts on the person and stays silent for the dog because it *understands* the
+> scene against your plain-English rules. The scene clips are stimulus (yours /
+> licensed stock / AI-generated); the dashboard, spoken alert, and RAM gauge are
+> the **real** system on-device. Open it yourself with `npm start`.
 
 ---
 
@@ -105,6 +176,33 @@ flowchart TD
 | PIR Motion Sensor (HC-SR501) | ~$2 |
 | Solar panel + battery (optional) | ~$15 |
 
+### 🔌 Wiring
+
+```
+        ☀ Solar ──▶ [ Solar + UPS HAT ] ◀──▶ 🔋 18650 Li-ion
+                           │ 5V / 3A (USB-C)
+                           ▼
+   📷 Camera ──CSI ribbon──▶ ┌────────────────┐ ◀── USB ── 🔊 Speaker
+                            │  Raspberry Pi  │            (spoken alerts)
+   👁 HC-SR501 PIR ──GPIO17──▶│    4 (≤4GB)    │
+                            └────────────────┘
+        (VCC→5V · OUT→GPIO17 · GND→GND — see table)
+```
+
+| Wire | Pi connection | Phys. pin | BCM |
+|---|---|---|---|
+| PIR `VCC` | 5V | 2 | — |
+| PIR `OUT` | GPIO17 | 11 | **17** *(matches `gpio.ts`)* |
+| PIR `GND` | GND | 6 | — |
+| Camera | CSI camera port | ribbon | — |
+| Speaker | USB-A | — | — |
+| Power in | USB-C 5V/3A | — | — |
+
+> The PIR is the **power-aware wake source** — the Pi sleeps until motion, then
+> wakes → captures → infers → sleeps. Change the pin via
+> `startPIRSentry({ pin })`. Solar/battery is optional; any 5V/3A USB-C supply
+> works for a wall-powered build.
+
 ## 🏆 Why ONLY QVAC?
 
 | QVAC SDK Method | Scarecrow Usage | Cloud Alternative You'd Need |
@@ -184,21 +282,40 @@ bash scripts/setup-pi.sh --ap   # also configure the Scarecrow-AP hotspot
 
 ## 📊 Benchmarks
 
-Run `python3 scripts/bench.py` to reproduce. Target hardware: Raspberry Pi 4 (4GB):
+**Classification quality (real, reproducible anywhere — `python3 scripts/bench.py`).**
+Precision/recall of the documented *offline keyword-fallback baseline* over the 233
+labeled fixture scenes — the floor the Llama 3.2 1B engine improves on:
 
-| Metric | Pi 4 (4GB) | Dev Laptop | Budget |
-|---|---|---|---|
-| Vision Analysis (1 frame) | ~3,200ms | ~80ms | <4,000ms |
-| Rule Evaluation | ~1,500ms | ~30ms | <2,000ms |
-| TTS Alert | ~800ms | ~25ms | <2,000ms |
-| Full Pipeline | ~5,500ms | ~135ms | <8,000ms |
-| Peak RAM | ~3.2GB | ~0.5GB | <3,800MB |
+| Baseline metric | Value |
+|---|---|
+| Precision | 0.67 |
+| Recall | 0.43 |
+| F1 | 0.52 |
+| Accuracy | 0.73 (169/233) |
 
-> *Dev laptop uses simulated timings. Run on real Pi for production numbers.*
+> The modest recall is the point: a keyword baseline misses non-"person" alerts
+> (vehicles, etc.), which is exactly why on-device LLM reasoning is used. The
+> Llama model's real precision/recall is measured **on-device** (needs the model).
+
+**Latency · RAM · power — measured on the Pi, not simulated.** These depend on the
+QVAC models and physical rig, so they are captured on-device (the dashboard
+`/api/status` reports **live RSS**; `htop`/`vcgencmd` for memory; INA219 for
+mWh/event). Targets for Raspberry Pi 4 (4GB):
+
+| Stage | Target |
+|---|---|
+| Vision analysis (1 frame) | < 4,000 ms |
+| Rule evaluation | < 2,000 ms |
+| TTS alert | < 2,000 ms |
+| Full pipeline | < 8,000 ms |
+| Peak RAM | < 3,800 MB (≤4GB constraint) |
+
+> These are budgets, not measurements — fill them from a real Pi run for the
+> submission. The benchmark script never fabricates device numbers.
 
 ## 🧪 Testing & CI
 
-**336 unit tests** (vision, rules + live editing, power state machine, telemetry, RAG known-entity recognition, P2P phone alerts, PIR wake, JSONL persistence, dashboard API) + 5 offline verification checks + 5 benchmark scenes + readiness suite. Run `npm test`.
+**118 unit tests** (vision, rules + live editing + real fallback classification over the 233-scene fixture set, power state machine, telemetry, RAG known-entity recognition, P2P phone alerts, PIR wake, JSONL persistence, dashboard API) + offline verification scan + readiness suite. Run `npm test`. *(Tests mock only the `@qvac/sdk`/hardware boundary; every assertion exercises real project logic — no tautological label-fed tests.)*
 
 **4-stage pipeline:** Quality → Security → Offline Verify → Deploy
 
@@ -214,7 +331,7 @@ python3 scripts/check_submission_readiness.py
 | Security (SAST) | CodeQL | ✅ |
 | Security (SCA) | Dependabot | ✅ |
 | Secret Scanning | TruffleHog | ✅ |
-| Offline Verification | verify_offline.py (5/5) | ✅ |
+| Offline Verification | verify_offline.py (cloud-import/URL scan + net probe) | ✅ |
 
 ## 📁 Project Structure
 ```

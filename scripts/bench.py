@@ -1,218 +1,162 @@
 #!/usr/bin/env python3
 """
-Scarecrow — Performance Benchmark Suite
-========================================
-Measures vision inference, rule evaluation, TTS generation, and full pipeline
-latency on Raspberry Pi ≤4GB hardware.
+Scarecrow — Benchmark Suite (honest edition)
+============================================
+This script reports ONLY what it can measure truthfully on the host it runs on:
+
+  • Classification quality — REAL precision/recall/F1 of the documented offline
+    keyword-fallback baseline (src/core/rules.ts) over the labeled fixtures.
+    Fully reproducible anywhere, no model required.
+  • Baseline latency — REAL wall-clock of the rule-matching baseline (model
+    excluded).
+
+It deliberately does NOT fabricate model-inference latency, RAM high-water, or
+mWh/event. Those depend on the QVAC models and the physical Pi and must be
+captured ON-DEVICE:
+
+  • RAM:   the live dashboard `/api/status` reports real process RSS; capture
+           `htop` / `vcgencmd get_mem` during a sentry run.
+  • Power: measure with an INA219 (mWh per event) on the solar/battery rig.
+  • Full pipeline latency: time `wakeAndCheck()` on the Pi with models loaded.
 
 Usage:
-  python3 scripts/bench.py            # Run benchmarks
-  python3 scripts/bench.py --assert   # Run + fail if regressions detected
+  python3 scripts/bench.py            # report
+  python3 scripts/bench.py --assert   # CI gate (fails if baseline degrades)
 """
 import os
 import sys
 import time
 import json
-import statistics
-import platform
-import subprocess
-import resource
+import datetime
 
-# ── Configuration ──────────────────────────────────────────────────────────────
-
-BUDGET = {
-    "pipeline_total_ms": 8000,    # Full capture→analyze→evaluate→alert
-    "vision_ms": 4000,            # Scene analysis (Vision-1B on Pi)
-    "rules_ms": 2000,             # NL rule evaluation (Llama 1B)
-    "tts_ms": 2000,               # TTS alert generation
-    "peak_ram_mb": 3800,          # ≤4GB hard constraint (leave 200MB for OS)
+# ── On-device targets (NOT measurements — documented budgets) ────────────────
+TARGETS_ON_DEVICE = {
+    "pipeline_total_ms": 8000,   # capture→analyze→evaluate→alert (Pi 4)
+    "vision_ms": 4000,           # QVAC-Vision-1B scene analysis
+    "rules_ms": 2000,            # Llama 3.2 1B rule evaluation
+    "tts_ms": 2000,              # Piper TTS
+    "peak_ram_mb": 3800,         # ≤4GB hard constraint (200MB headroom)
 }
 
+# Minimum acceptable baseline quality (real, measured below). Set safely under
+# the observed values so CI is meaningful but not flaky.
+BASELINE_FLOOR = {"precision": 0.55, "accuracy": 0.65}
+
+
 def load_fixtures():
-    base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    fixtures = os.path.join(base, 'data', 'fixtures')
-    rules_path = os.path.join(fixtures, 'test_rules.json')
-    scenes_path = os.path.join(fixtures, 'test_scenes.json')
-    
-    rules = []
-    scenes = []
-    
-    if os.path.isfile(rules_path):
-        with open(rules_path) as f:
-            rules_data = json.load(f)
-            rules = [f"Alert if {r['condition']} ({r['action']})" for r in rules_data]
-            
-    if os.path.isfile(scenes_path):
-        with open(scenes_path) as f:
-            scenes_data = json.load(f)
-            scenes = [
-                {
-                    "id": f"scene-{i+1}", 
-                    "desc": s["description"], 
-                    "expected_alert": s["expected_alert"]
-                } for i, s in enumerate(scenes_data)
-            ]
-            
-    return scenes, rules
+    base = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    fx = os.path.join(base, "data", "fixtures")
+    rules = json.load(open(os.path.join(fx, "test_rules.json")))
+    scenes = json.load(open(os.path.join(fx, "test_scenes.json")))
+    return rules, scenes
 
-SCENES, RULES = load_fixtures()
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
+def keyword_baseline(description: str) -> bool:
+    """
+    The documented offline fallback from src/core/rules.ts: alert iff the scene
+    mentions a person/human. This is the floor the Llama model improves on —
+    we publish its real numbers rather than hide behind a demo.
+    """
+    d = description.lower()
+    return ("person" in d) or ("human" in d)
 
-def get_system_info():
-    """Collect hardware info for the benchmark report."""
-    info = {
-        "platform": platform.platform(),
-        "processor": platform.processor() or platform.machine(),
-        "python": platform.python_version(),
-        "cpu_count": os.cpu_count(),
-    }
-    try:
-        if sys.platform == "darwin":
-            ram = int(subprocess.check_output(["sysctl", "-n", "hw.memsize"]).strip())
-            info["ram_gb"] = round(ram / (1024**3), 1)
-        elif sys.platform == "linux":
-            with open("/proc/meminfo") as f:
-                for line in f:
-                    if line.startswith("MemTotal"):
-                        info["ram_gb"] = round(int(line.split()[1]) / (1024**2), 1)
-                        break
-    except Exception:
-        info["ram_gb"] = "unknown"
-    # Detect Pi
-    try:
-        if os.path.isfile("/proc/device-tree/model"):
-            with open("/proc/device-tree/model") as f:
-                info["device"] = f.read().strip().rstrip("\x00")
+
+def evaluate_baseline(scenes):
+    tp = fp = tn = fn = 0
+    t0 = time.perf_counter()
+    for s in scenes:
+        pred = keyword_baseline(s["description"])
+        exp = bool(s["expected_alert"])
+        if pred and exp:
+            tp += 1
+        elif pred and not exp:
+            fp += 1
+        elif not pred and not exp:
+            tn += 1
         else:
-            info["device"] = "Desktop/Laptop (not Pi)"
-    except Exception:
-        info["device"] = "unknown"
-    return info
+            fn += 1
+    elapsed_ms = (time.perf_counter() - t0) * 1000
+    n = len(scenes)
+    precision = tp / (tp + fp) if (tp + fp) else 0.0
+    recall = tp / (tp + fn) if (tp + fn) else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
+    accuracy = (tp + tn) / n if n else 0.0
+    return {
+        "scenes": n,
+        "tp": tp, "fp": fp, "tn": tn, "fn": fn,
+        "precision": round(precision, 4),
+        "recall": round(recall, 4),
+        "f1": round(f1, 4),
+        "accuracy": round(accuracy, 4),
+        "baseline_latency_ms_total": round(elapsed_ms, 3),
+        "baseline_latency_us_per_scene": round(elapsed_ms * 1000 / n, 2) if n else 0,
+    }
 
-
-def get_peak_ram_mb():
-    """Get peak RSS in MB."""
-    usage = resource.getrusage(resource.RUSAGE_SELF)
-    if sys.platform == "darwin":
-        return usage.ru_maxrss / (1024 * 1024)
-    return usage.ru_maxrss / 1024
-
-
-def simulate_pipeline(scene):
-    """
-    Simulate the full sentry pipeline for a scene.
-    On real Pi, this calls @qvac/sdk Vision-1B → Llama → Piper.
-    """
-    timings = {}
-
-    # Phase 1: Vision analysis (QVAC-Vision-1B)
-    t0 = time.perf_counter()
-    time.sleep(0.080)  # ~80ms simulated (real Pi: 2-4s)
-    timings["vision_ms"] = round((time.perf_counter() - t0) * 1000, 2)
-
-    # Phase 2: Rule evaluation (Llama 3.2 1B)
-    t0 = time.perf_counter()
-    time.sleep(0.030)  # ~30ms simulated
-    timings["rules_ms"] = round((time.perf_counter() - t0) * 1000, 2)
-
-    # Phase 3: TTS alert (if triggered)
-    alert = scene["expected_alert"]
-    if alert:
-        t0 = time.perf_counter()
-        time.sleep(0.025)  # ~25ms simulated
-        timings["tts_ms"] = round((time.perf_counter() - t0) * 1000, 2)
-    else:
-        timings["tts_ms"] = 0.0
-
-    timings["total_ms"] = round(sum(timings.values()), 2)
-    timings["alert_triggered"] = alert
-    return timings
-
-
-# ── Main ───────────────────────────────────────────────────────────────────────
 
 def main():
     assert_mode = "--assert" in sys.argv
-    print("=" * 64)
-    print("  Scarecrow — Performance Benchmark Suite")
+    rules, scenes = load_fixtures()
+
+    print("=" * 66)
+    print("  Scarecrow — Benchmark Suite (honest edition)")
     print("  Mode:", "ASSERT (CI gate)" if assert_mode else "REPORT")
-    print("  Hardware Constraint: ≤4GB RAM (Tinkerer Track)")
-    print("=" * 64)
+    print("=" * 66)
 
-    system_info = get_system_info()
-    print(f"\n  Device: {system_info.get('device', 'unknown')}")
-    print(f"  Hardware: {system_info['processor']} | {system_info.get('ram_gb', '?')} GB RAM | {system_info['cpu_count']} cores")
-    print(f"  Platform: {system_info['platform']}")
+    # ── Classification quality (REAL) ─────────────────────────────────────────
+    m = evaluate_baseline(scenes)
+    print("\n  ── Classification — offline keyword-fallback baseline (REAL) ──")
+    print(f"  Fixtures: {len(rules)} rules × {m['scenes']} labeled scenes")
+    print(f"  Confusion:  TP={m['tp']}  FP={m['fp']}  TN={m['tn']}  FN={m['fn']}")
+    print(f"  Precision: {m['precision']:.3f}   Recall: {m['recall']:.3f}"
+          f"   F1: {m['f1']:.3f}   Accuracy: {m['accuracy']:.3f}")
+    print(f"  Baseline match latency: {m['baseline_latency_us_per_scene']:.1f} µs/scene"
+          f" (rule-match only, model excluded)")
+    print("  Note: this is the FLOOR. The Llama 3.2 1B engine improves on it;")
+    print("        its real precision/recall is measured on-device (needs the model).")
 
-    # Run benchmarks
-    all_results = []
-    print(f"\n  Running {len(SCENES)} scene analyses with {len(RULES)} rules...\n")
-    print(f"  {'Scene':<50} {'Vision':>7} {'Rules':>7} {'TTS':>7} {'Total':>7} {'Alert':>6}")
-    print(f"  {'─'*50} {'─'*7} {'─'*7} {'─'*7} {'─'*7} {'─'*6}")
+    # ── Latency / RAM / power (on-device only — NOT fabricated) ───────────────
+    print("\n  ── Model latency · RAM · power (measure ON-DEVICE) ──")
+    print("  These are NOT simulated here. On the Pi, with models loaded:")
+    for k, v in TARGETS_ON_DEVICE.items():
+        unit = "MB" if "ram" in k else "ms"
+        print(f"    target {k:<18} ≤ {v} {unit}")
+    print("  Capture: dashboard /api/status (live RSS) · htop · vcgencmd get_mem")
+    print("           INA219 for mWh/event on the solar/battery rig.")
 
-    for scene in SCENES:
-        t = simulate_pipeline(scene)
-        all_results.append({"scene_id": scene["id"], "description": scene["desc"], **t})
-        alert_str = "🔴 YES" if t["alert_triggered"] else "⬜ no"
-        print(f"  {scene['desc']:<50} {t['vision_ms']:>6.1f} {t['rules_ms']:>6.1f} {t['tts_ms']:>6.1f} {t['total_ms']:>6.1f} {alert_str}")
-
-    # Aggregate stats
-    totals = [r["total_ms"] for r in all_results]
-    vision_times = [r["vision_ms"] for r in all_results]
-    rules_times = [r["rules_ms"] for r in all_results]
-    peak_ram = round(get_peak_ram_mb(), 1)
-
-    stats = {
-        "pipeline_p50_ms": round(statistics.median(totals), 2),
-        "pipeline_p95_ms": round(sorted(totals)[int(len(totals) * 0.95)], 2) if len(totals) >= 2 else round(max(totals), 2),
-        "pipeline_mean_ms": round(statistics.mean(totals), 2),
-        "vision_p50_ms": round(statistics.median(vision_times), 2),
-        "rules_p50_ms": round(statistics.median(rules_times), 2),
-        "peak_ram_mb": peak_ram,
-        "scenes_run": len(SCENES),
-        "alerts_triggered": sum(1 for r in all_results if r["alert_triggered"]),
-    }
-
-    print("\n  ── Summary ──")
-    print(f"  Pipeline p50: {stats['pipeline_p50_ms']:.1f}ms | p95: {stats['pipeline_p95_ms']:.1f}ms")
-    print(f"  Vision p50: {stats['vision_p50_ms']:.1f}ms | Rules p50: {stats['rules_p50_ms']:.1f}ms")
-    print(f"  Alerts triggered: {stats['alerts_triggered']}/{stats['scenes_run']}")
-    print(f"  Peak RAM: {peak_ram:.1f} MB")
-
-    # Write results
+    # ── Persist real results ──────────────────────────────────────────────────
     report = {
-        "timestamp": __import__("datetime").datetime.utcnow().isoformat() + "Z",
-        "system": system_info,
-        "budget": BUDGET,
-        "stats": stats,
-        "rules_tested": RULES,
-        "scenes": all_results,
-        "note": "Simulated timings — run on Raspberry Pi for real numbers (expect 2-4s vision, 1-2s rules)",
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "classification_baseline": m,
+        "on_device_targets": TARGETS_ON_DEVICE,
+        "measured_here": ["classification_baseline"],
+        "measured_on_device_only": ["model_latency", "peak_ram", "mwh_per_event"],
+        "note": "Baseline metrics are real & reproducible. Model latency/RAM/power "
+                "require the Pi + QVAC models and are captured on-device.",
     }
     out_dir = os.path.join(os.path.dirname(__file__), "..", "data")
     os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, "bench_results.json")
-    with open(out_path, "w") as f:
+    with open(os.path.join(out_dir, "bench_results.json"), "w") as f:
         json.dump(report, f, indent=2)
-    print("\n  📄 Results saved to data/bench_results.json")
+    print("\n  📄 Saved real baseline metrics to data/bench_results.json")
 
-    # Assert mode
+    # ── Assert mode: gate on the REAL baseline, never on fabricated numbers ───
     if assert_mode:
         failures = []
-        if stats["pipeline_p50_ms"] > BUDGET["pipeline_total_ms"]:
-            failures.append(f"pipeline_p50 {stats['pipeline_p50_ms']}ms > budget {BUDGET['pipeline_total_ms']}ms")
-        if peak_ram > BUDGET["peak_ram_mb"]:
-            failures.append(f"peak_ram {peak_ram}MB > budget {BUDGET['peak_ram_mb']}MB")
+        if m["scenes"] != len(scenes):
+            failures.append("did not evaluate all scenes")
+        if m["precision"] < BASELINE_FLOOR["precision"]:
+            failures.append(f"precision {m['precision']} < floor {BASELINE_FLOOR['precision']}")
+        if m["accuracy"] < BASELINE_FLOOR["accuracy"]:
+            failures.append(f"accuracy {m['accuracy']} < floor {BASELINE_FLOOR['accuracy']}")
         if failures:
-            print("\n  ❌ REGRESSION DETECTED:")
-            for f_msg in failures:
-                print(f"    • {f_msg}")
+            print("\n  ❌ BASELINE REGRESSION:")
+            for msg in failures:
+                print(f"    • {msg}")
+            print("=" * 66)
             sys.exit(1)
-        else:
-            print("\n  ✅ All benchmarks within ≤4GB budget.")
+        print("\n  ✅ Baseline within bounds.")
 
-    print(f"\n{'=' * 64}")
+    print("=" * 66)
     sys.exit(0)
 
 

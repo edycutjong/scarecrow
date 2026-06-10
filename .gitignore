@@ -15,6 +15,10 @@ coverage/
 # OS
 .DS_Store
 
+# Python
+__pycache__/
+*.pyc
+
 # Logs
 *.log
 
@@ -22,6 +26,12 @@ coverage/
 data/seed_manifest.json
 data/bench_results.json
 data/events.jsonl
+
+# Demo video clips + generated stills — kept local (manifest/README tracked)
+data/fixtures/clips/*.mp4
+data/fixtures/clips/*.mov
+data/fixtures/clips/*.webm
+data/fixtures/clips/stills/
 
 # Model files
 *.gguf
