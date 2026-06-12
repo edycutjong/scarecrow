@@ -32,7 +32,7 @@ The dashboard shows the live pipeline, camera HUD, rule editor, and event log. A
 
   <h1>Scarecrow 🔌</h1>
   <p><em>$50 off-grid AI sentry on a Raspberry Pi ≤4GB. Camera → multimodal scene understanding → natural-language rule matching → spoken TTS alerts. Solar/battery powered, fully offline.</em></p>
-  <img src="docs/readme-hero.svg" alt="Scarecrow Hero" width="100%">
+  <a href="https://youtu.be/fB8f_LXUss4"><img src="docs/readme-hero.svg" alt="Scarecrow Hero" width="100%"></a>
 
   <br/>
 
@@ -52,6 +52,8 @@ The dashboard shows the live pipeline, camera HUD, rule editor, and event log. A
 ---
 
 ## 👀 See It Work
+
+📺 **[Watch the full demo on YouTube](https://youtu.be/fB8f_LXUss4)**
 
 <table>
 <tr>
