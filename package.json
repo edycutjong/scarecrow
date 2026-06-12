@@ -5,7 +5,7 @@
   "main": "src/core/power.ts",
   "type": "module",
   "scripts": {
-    "start": "node --import 'data:text/javascript,import { register } from \"node:module\"; import { pathToFileURL } from \"node:url\"; register(\"ts-node/esm\", pathToFileURL(\"./\"));' src/web/server.ts",
+    "start": "python3 scripts/seed.py && node --import 'data:text/javascript,import { register } from \"node:module\"; import { pathToFileURL } from \"node:url\"; register(\"ts-node/esm\", pathToFileURL(\"./\"));' src/web/server.ts",
     "sentry": "node --import 'data:text/javascript,import { register } from \"node:module\"; import { pathToFileURL } from \"node:url\"; register(\"ts-node/esm\", pathToFileURL(\"./\"));' src/core/power.ts",
     "dev": "npm start",
     "typecheck": "npx tsc --noEmit",

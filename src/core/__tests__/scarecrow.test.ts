@@ -131,7 +131,9 @@ describe("Scarecrow Core Module", () => {
 
     it("should handle MOCK_HARDWARE=true", async () => {
       process.env.MOCK_HARDWARE = "true";
-      const frame = await captureFrame();
+      const framePromise = captureFrame();
+      await vi.advanceTimersByTimeAsync(2500);
+      const frame = await framePromise;
       expect(frame).not.toBeNull();
       expect(frame?.toString()).toBe("simulated_image_data");
       delete process.env.MOCK_HARDWARE;

@@ -86,6 +86,16 @@ describe("audit.ts", () => {
   });
 
   describe("sink", () => {
+    it("consoleSink logs to console correctly", async () => {
+      const { consoleSink } = await import("../audit.js");
+      consoleSink({ type: "model_load", modelId: "m1", modelType: "llm", loadMs: 10, timestamp: 0 });
+      consoleSink({ type: "model_load", modelId: "m1", loadMs: 10, timestamp: 0 }); // missing modelType (hits ?? "?")
+      consoleSink({ type: "model_unload", modelId: "m1", timestamp: 0 });
+      consoleSink({ type: "completion", modelId: "m1", totalMs: 10, tokenCount: 10, tokensPerSec: 1, streamed: true, ttftMs: 5, source: "local", timestamp: 0 });
+      consoleSink({ type: "completion", modelId: "m1", totalMs: 10, tokenCount: 10, streamed: false, timestamp: 0 }); // missing tokensPerSec & source
+      expect(logSpy).toHaveBeenCalledTimes(5);
+    });
+
     it("invokes the sink for each event", () => {
       const seen = vi.fn();
       setAuditSink(seen);

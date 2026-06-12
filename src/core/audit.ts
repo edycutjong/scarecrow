@@ -40,7 +40,7 @@ const events: AuditEvent[] = [];
  *  out (e.g. to push into a dashboard stream) via setAuditSink(). */
 let sink: ((event: AuditEvent) => void) | null = consoleSink;
 
-function consoleSink(e: AuditEvent): void {
+export function consoleSink(e: AuditEvent): void {
   if (e.type === "model_load") {
     console.log(`[audit] load   ${e.modelType ?? "?"} (${e.modelId}) in ${e.loadMs}ms`);
   } else if (e.type === "model_unload") {
