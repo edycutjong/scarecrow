@@ -19,11 +19,35 @@ The dashboard shows the live pipeline, camera HUD, rule editor, and event log. A
 | **Production quality** | `npm test` → **118 unit tests**; `npm run ci` (lint + types + coverage) | ✅ |
 | **Reproducible classification** | `python3 scripts/bench.py` → real precision/recall of the offline baseline over 233 labeled scenes | ✅ |
 
-**Mandatory constraints — all met:** 100% on-device inference through `@qvac/sdk` (**zero cloud APIs** — the hard disqualifier), [MIT](LICENSE) licensed and fully public, BYOH consumer hardware (Pi 4/5), reproducible via [`scripts/setup-pi.sh`](scripts/setup-pi.sh).
+**Mandatory constraints — all met:** 100% on-device inference through `@qvac/sdk` (**zero cloud APIs** — the hard disqualifier; every interface declared in [`docs/REMOTE_APIS.md`](docs/REMOTE_APIS.md)), [MIT](LICENSE) licensed and fully public, BYOH consumer hardware (Pi 4/5), reproducible via [`scripts/setup-pi.sh`](scripts/setup-pi.sh).
 
-**Evidence bundle:** offline scan + live network probe (`verify_offline.py`) · real classification baseline over 233 labeled scenes (`bench.py`) · append-only event log (`data/events.jsonl`) · readiness gate (`check_submission_readiness.py`) · physical demo runbook ([`DEMO.md`](DEMO.md)). *Model latency, peak RAM, and mWh/event are captured **on-device** (see [Benchmarks](#-benchmarks)) — not simulated.*
+**Evidence bundle:** remote-API declaration ([`docs/REMOTE_APIS.md`](docs/REMOTE_APIS.md) — zero cloud APIs) · offline scan + live network probe (`verify_offline.py`) · real classification baseline over 233 labeled scenes (`bench.py`) · append-only event log (`data/events.jsonl`) · readiness gate (`check_submission_readiness.py`) · physical demo runbook ([`DEMO.md`](DEMO.md)). *Model latency, peak RAM, and mWh/event are captured **on-device** (see [Benchmarks](#-benchmarks)) — not simulated.*
 
 **Radical honesty:** nothing fake is shown as real. The RAM gauge is measured process RSS (tagged `RSS`); battery/solar are *modelled* and clearly tagged **`SIM`** in the UI until an INA219 sensor is wired (`SCARECROW_BATTERY_PCT`/`SCARECROW_SOLAR_W`). Camera capture uses real `libcamera-still` on the Pi. See [Honest Limitations](#-honest-limitations).
+
+---
+
+<div align="center">
+  <img src="docs/icon-animated.svg" alt="Scarecrow Logo" width="120">
+
+  <h1>Scarecrow 🔌</h1>
+  <p><em>$50 off-grid AI sentry on a Raspberry Pi ≤4GB. Camera → multimodal scene understanding → natural-language rule matching → spoken TTS alerts. Solar/battery powered, fully offline.</em></p>
+  <img src="docs/readme-hero.svg" alt="Scarecrow Hero" width="100%">
+
+  <br/>
+
+  [![Built for QVAC Hackathon](https://img.shields.io/badge/DoraHacks-QVAC%20Edge%20AI-8b5cf6?style=for-the-badge)](https://dorahacks.io/hackathon/qvac-unleach-edge-ai-i/detail)
+  [![Track](https://img.shields.io/badge/Track-Tinkerer%20(Pi%20≤4GB)-f59e0b?style=for-the-badge)](https://dorahacks.io/hackathon/qvac-unleach-edge-ai-i/tracks#tinkerer)
+
+  <br/>
+
+  ![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=node.js&logoColor=white)
+  ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
+  ![Raspberry Pi](https://img.shields.io/badge/Raspberry_Pi-A22846?style=flat&logo=raspberrypi&logoColor=white)
+  ![QVAC](https://img.shields.io/badge/@qvac/sdk-06b6d4?style=flat)
+  [![CI](https://github.com/edycutjong/scarecrow/actions/workflows/ci.yml/badge.svg)](https://github.com/edycutjong/scarecrow/actions/workflows/ci.yml)
+
+</div>
 
 ---
 
@@ -95,30 +119,6 @@ The van trips a 🔴 **ALERT**; the silver truck is **recognised** and the alert
 > scene against your plain-English rules. The scene clips are stimulus (yours /
 > licensed stock / AI-generated); the dashboard, spoken alert, and RAM gauge are
 > the **real** system on-device. Open it yourself with `npm start`.
-
----
-
-<div align="center">
-  <img src="docs/icon-animated.svg" alt="Scarecrow Logo" width="120">
-
-  <h1>Scarecrow 🔌</h1>
-  <p><em>$50 off-grid AI sentry on a Raspberry Pi ≤4GB. Camera → multimodal scene understanding → natural-language rule matching → spoken TTS alerts. Solar/battery powered, fully offline.</em></p>
-  <img src="docs/readme-hero.svg" alt="Scarecrow Hero" width="100%">
-
-  <br/>
-
-  [![Built for QVAC Hackathon](https://img.shields.io/badge/DoraHacks-QVAC%20Edge%20AI-8b5cf6?style=for-the-badge)](https://dorahacks.io/hackathon/qvac-unleach-edge-ai-i/detail)
-  [![Track](https://img.shields.io/badge/Track-Tinkerer%20(Pi%20≤4GB)-f59e0b?style=for-the-badge)](https://dorahacks.io/hackathon/qvac-unleach-edge-ai-i/tracks#tinkerer)
-
-  <br/>
-
-  ![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=node.js&logoColor=white)
-  ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
-  ![Raspberry Pi](https://img.shields.io/badge/Raspberry_Pi-A22846?style=flat&logo=raspberrypi&logoColor=white)
-  ![QVAC](https://img.shields.io/badge/@qvac/sdk-06b6d4?style=flat)
-  [![CI](https://github.com/edycutjong/scarecrow/actions/workflows/ci.yml/badge.svg)](https://github.com/edycutjong/scarecrow/actions/workflows/ci.yml)
-
-</div>
 
 ---
 
@@ -327,9 +327,9 @@ python3 scripts/check_submission_readiness.py
 
 | Layer | Tool | Status |
 |---|---|---|
-| Code Quality | TypeScript | ✅ |
+| Code Quality | ESLint + TypeScript | ✅ |
 | Security (SAST) | CodeQL | ✅ |
-| Security (SCA) | Dependabot | ✅ |
+| Dependency Audit (SCA) | npm audit + Dependabot | ✅ |
 | Secret Scanning | TruffleHog | ✅ |
 | Offline Verification | verify_offline.py (cloud-import/URL scan + net probe) | ✅ |
 

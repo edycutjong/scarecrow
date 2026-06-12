@@ -28,8 +28,7 @@ This project is designed for **zero-cloud, offline execution**:
 
 ## CI Security Pipeline
 
-- **TruffleHog**: Scans for committed secrets
-- **npm audit**: Dependency vulnerability scanning
+- **TruffleHog**: Scans for committed secrets (CI, `--only-verified`)
+- **npm audit**: Dependency vulnerability scanning (CI, `--audit-level=high`)
 - **CodeQL**: Static Application Security Testing (SAST)
 - **Dependabot**: Automated dependency updates
-- **License checker**: Ensures no GPL contamination

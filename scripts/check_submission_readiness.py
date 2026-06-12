@@ -60,6 +60,8 @@ def main():
     for f in ["src/core/qvac.ts", "src/core/vision.ts", "src/core/rules.ts", "src/core/power.ts"]:
         check(f, os.path.isfile(os.path.join(base, f)), "File missing")
     check("src/web/index.html", os.path.isfile(os.path.join(base, "src/web/index.html")), "Dashboard missing")
+    # DoraHacks form: "clear structured explanation of all remote APIs you're using"
+    check("docs/REMOTE_APIS.md", os.path.isfile(os.path.join(base, "docs/REMOTE_APIS.md")), "Remote-API declaration missing")
 
     # Check @qvac/sdk usage
     qvac_count = 0
