@@ -144,6 +144,16 @@ describe("p2p.ts — phone alert channel", () => {
     expect(mockStartQVACProvider.mock.calls[0][0].firewall).toBeUndefined();
   });
 
+  it("bypasses startQVACProvider when MOCK_HARDWARE is true", async () => {
+    process.env.MOCK_HARDWARE = "true";
+    mockStartQVACProvider.mockClear();
+    const result = await startAlertChannel();
+    expect(result.success).toBe(true);
+    expect(result.publicKey).toBe("mock_key");
+    expect(mockStartQVACProvider).not.toHaveBeenCalled();
+    delete process.env.MOCK_HARDWARE;
+  });
+
   it("does not throw when the P2P provider fails (offline)", async () => {
     mockStartQVACProvider.mockRejectedValueOnce(new Error("no peers"));
     const consoleErrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -261,6 +271,12 @@ describe("server.ts — API router", () => {
     const body = JSON.parse(handleApiRequest("/api/health")!.body);
     expect(body.ok).toBe(true);
     expect(body.network).toBe("local-only");
+  });
+
+  it("GET /api/audit returns audit log and summary", () => {
+    const body = JSON.parse(handleApiRequest("/api/audit")!.body);
+    expect(body).toHaveProperty("summary");
+    expect(body).toHaveProperty("log");
   });
 
   it("returns null for non-API paths (static fallthrough)", () => {

@@ -129,6 +129,14 @@ describe("Scarecrow Core Module", () => {
       expect(frame).toBeNull();
     });
 
+    it("should handle MOCK_HARDWARE=true", async () => {
+      process.env.MOCK_HARDWARE = "true";
+      const frame = await captureFrame();
+      expect(frame).not.toBeNull();
+      expect(frame?.toString()).toBe("simulated_image_data");
+      delete process.env.MOCK_HARDWARE;
+    });
+
     it("should analyze scene image using vision model", async () => {
       mockLoadModel.mockResolvedValue("vision-model-id");
       mockCompletion.mockResolvedValue({ text: Promise.resolve("A person approaching the shed") });
@@ -168,15 +176,15 @@ describe("Scarecrow Core Module", () => {
       mockLoadModel.mockResolvedValue("rules-model-id");
       mockCompletion.mockResolvedValue({ text: Promise.resolve("NOT_JSON") });
 
-      // Match person/human keyword
-      const res1 = await evaluateRules("I see a human walking");
+      // Match person keyword from activeRules[0] ("person", "approaching")
+      const res1 = await evaluateRules("I see a person walking");
       expect(res1.shouldAlert).toBe(true);
       expect(res1.matchedRule).toEqual(activeRules[0]);
 
-      // Match other keyword
+      // Match no keyword
       const res2 = await evaluateRules("just trees and grass");
       expect(res2.shouldAlert).toBe(false);
-      expect(res2.matchedRule).toEqual(activeRules[1]);
+      expect(res2.matchedRule).toBeNull();
     });
   });
 
@@ -443,6 +451,14 @@ describe("Scarecrow Core Module", () => {
       expect(resEmpty.text).toBe("image-processed");
     });
 
+    it("should handle falsy text from completion (?? fallback)", async () => {
+      mockCompletion.mockResolvedValue({ text: Promise.resolve(undefined) });
+      const res = await runCompletion({
+        modelId: "mock-id",
+        history: [{ role: "user", content: "hi" }],
+      });
+      expect(res.text).toBeUndefined();
+    });
 
     it("should handle runCompletion failures", async () => {
       mockCompletion.mockRejectedValue(new Error("Inference failed"));

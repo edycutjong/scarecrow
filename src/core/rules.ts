@@ -58,15 +58,21 @@ Respond ONLY with JSON: {"matchedRuleId": "1", "action": "alert" | "ignore"}`;
   await unloadQVACModel(modelId); // Free RAM
 
   try {
-    const result = JSON.parse(response.text);
+    const jsonMatch = response.text.match(/\{[\s\S]*\}/);
+    const cleanText = jsonMatch ? jsonMatch[0] : response.text;
+    const result = JSON.parse(cleanText);
     const rule = activeRules.find(r => r.id === result.matchedRuleId) || null;
     return { matchedRule: rule, shouldAlert: result.action === "alert" };
   } catch {
     // Fallback: simple keyword matching if JSON parse fails
     const lowerScene = sceneDescription.toLowerCase();
-    if (lowerScene.includes("person") || lowerScene.includes("human")) {
-      return { matchedRule: activeRules[0], shouldAlert: true };
+    for (const rule of activeRules) {
+        // Check if any word > 4 chars from the rule exists in the scene
+        const keywords = rule.condition.toLowerCase().split(" ").filter(w => w.length > 4);
+        if (keywords.some(k => lowerScene.includes(k))) {
+            return { matchedRule: rule, shouldAlert: rule.action === "alert" };
+        }
     }
-    return { matchedRule: activeRules[1], shouldAlert: false };
+    return { matchedRule: null, shouldAlert: false };
   }
 }

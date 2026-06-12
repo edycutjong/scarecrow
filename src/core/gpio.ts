@@ -22,7 +22,7 @@ export type MotionHandler = () => void;
 
 /** True when running on hardware that exposes GPIO (best-effort detection). */
 export function gpioAvailable(): boolean {
-  if (process.env.SCARECROW_SIMULATE_PIR === "1") return false;
+  if (process.env.SCARECROW_SIMULATE_PIR === "1" || process.env.MOCK_HARDWARE === "true") return false;
   return process.platform === "linux" && process.arch.startsWith("arm");
 }
 

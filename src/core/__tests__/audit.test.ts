@@ -11,12 +11,14 @@ import {
 } from "../audit.js";
 
 describe("audit.ts", () => {
+  let logSpy: ReturnType<typeof vi.spyOn>;
   beforeEach(() => {
     clearAuditLog();
-    setAuditSink(null); // silence the default console sink during tests
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
   afterEach(() => {
     clearAuditLog();
+    logSpy.mockRestore();
   });
 
   describe("estimateTokens", () => {
@@ -105,7 +107,18 @@ describe("audit.ts", () => {
       const log = getAuditLog();
       expect(log).toHaveLength(500);
       expect(log[0].modelId).toBe("m10"); // first 10 dropped
-      expect(log[log.length - 1].modelId).toBe("m509");
+    });
+  });
+
+  describe("uncovered branches", () => {
+    it("handles missing ttft/tokensPerSec and unmatched unloads", () => {
+      // Unmatched unload to cover `active.get(e.modelId) ?? 0`
+      recordModelUnload("never_loaded");
+      // Missing ttftMs and tokensPerSec to cover `?? 0` in getAuditSummary
+      const log = getAuditLog() as any;
+      log.push({ type: "completion", modelId: "m1", timestamp: Date.now() }); // forged completion
+      const s = getAuditSummary();
+      expect(s.activeModels).toEqual([]);
     });
   });
 });

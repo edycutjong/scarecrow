@@ -58,6 +58,13 @@ export async function startAlertChannel(
   allowedPhoneKeys: string[] = [],
   topic: string = ALERT_TOPIC
 ): Promise<{ success: boolean; publicKey?: string }> {
+  if (process.env.MOCK_HARDWARE === "true") {
+    console.log("[p2p] MOCK_HARDWARE=true — bypassing actual P2P networking to prevent wifi isolation failures");
+    channelOpen = true;
+    providerPublicKey = "mock_key";
+    return { success: true, publicKey: providerPublicKey };
+  }
+
   const firewall =
     allowedPhoneKeys.length > 0
       ? { mode: "allow" as const, publicKeys: allowedPhoneKeys }

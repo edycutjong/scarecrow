@@ -1,6 +1,6 @@
 {
   "name": "scarecrow",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Off-grid AI sentry: vision + rules + spoken alerts on a Raspberry Pi ≤4GB",
   "main": "src/core/power.ts",
   "type": "module",

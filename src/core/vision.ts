@@ -8,6 +8,10 @@ const execAsync = promisify(exec);
 
 // Captures frame from Raspberry Pi camera
 export async function captureFrame(): Promise<Buffer | null> {
+  if (process.env.MOCK_HARDWARE === "true") {
+    console.log("[vision] MOCK_HARDWARE=true — returning dummy frame to bypass hardware");
+    return await fs.readFile(path.join(process.cwd(), "docs", "screenshots", "stimulus-person.jpg"));
+  }
   const tmpPath = path.join(process.cwd(), "temp_frame.jpg");
   try {
     console.log("[vision] Capturing frame using libcamera-still...");
