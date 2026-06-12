@@ -15,6 +15,7 @@ import {
   registerKnownEntity,
   removeKnownEntity,
 } from "../core/memory.js";
+import { getAuditLog, getAuditSummary } from "../core/audit.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIR = __dirname;
@@ -59,6 +60,8 @@ export function handleApiRequest(pathname: string): ApiResponse | null {
       return json({ rules: getActiveRules() });
     case "/api/entities":
       return json({ entities: getKnownEntities() });
+    case "/api/audit":
+      return json({ summary: getAuditSummary(), log: getAuditLog() });
     case "/api/health":
       return json({ ok: true, service: "scarecrow", network: "local-only" });
     default:

@@ -16,12 +16,12 @@ The dashboard shows the live pipeline, camera HUD, rule editor, and event log. A
 | **Capability unlock** (RAG known-entity recall) | [`src/core/memory.ts`](src/core/memory.ts) — your car/pet won't trip it, a stranger will | ✅ |
 | **≤4GB on retail hardware** | `/api/status` reports **real measured RSS**; single-model load→infer→unload | ✅ measured, not faked |
 | **True offline** | `python3 scripts/verify_offline.py` — static cloud-import/URL scan + live network probe | ✅ |
-| **Production quality** | `npm test` → **118 unit tests**; `npm run ci` (lint + types + coverage) | ✅ |
+| **Production quality** | `npm test` → **128 unit tests**; `npm run ci` (lint + types + coverage) | ✅ |
 | **Reproducible classification** | `python3 scripts/bench.py` → real precision/recall of the offline baseline over 233 labeled scenes | ✅ |
 
 **Mandatory constraints — all met:** 100% on-device inference through `@qvac/sdk` (**zero cloud APIs** — the hard disqualifier; every interface declared in [`docs/REMOTE_APIS.md`](docs/REMOTE_APIS.md)), [MIT](LICENSE) licensed and fully public, BYOH consumer hardware (Pi 4/5), reproducible via [`scripts/setup-pi.sh`](scripts/setup-pi.sh).
 
-**Evidence bundle:** remote-API declaration ([`docs/REMOTE_APIS.md`](docs/REMOTE_APIS.md) — zero cloud APIs) · offline scan + live network probe (`verify_offline.py`) · real classification baseline over 233 labeled scenes (`bench.py`) · append-only event log (`data/events.jsonl`) · readiness gate (`check_submission_readiness.py`) · physical demo runbook ([`DEMO.md`](DEMO.md)). *Model latency, peak RAM, and mWh/event are captured **on-device** (see [Benchmarks](#-benchmarks)) — not simulated.*
+**Evidence bundle:** remote-API declaration ([`docs/REMOTE_APIS.md`](docs/REMOTE_APIS.md) — zero cloud APIs) · structured inference audit log (`GET /api/audit` — model loads/unloads, TTFT, tokens/sec) · offline scan + live network probe (`verify_offline.py`) · real classification baseline over 233 labeled scenes (`bench.py`) · append-only event log (`data/events.jsonl`) · readiness gate (`check_submission_readiness.py`) · physical demo runbook ([`DEMO.md`](DEMO.md)). *Model latency, peak RAM, and mWh/event are captured **on-device** (see [Benchmarks](#-benchmarks)) — not simulated.*
 
 **Radical honesty:** nothing fake is shown as real. The RAM gauge is measured process RSS (tagged `RSS`); battery/solar are *modelled* and clearly tagged **`SIM`** in the UI until an INA219 sensor is wired (`SCARECROW_BATTERY_PCT`/`SCARECROW_SOLAR_W`). Camera capture uses real `libcamera-still` on the Pi. See [Honest Limitations](#-honest-limitations).
 
@@ -241,6 +241,7 @@ The dashboard polls a tiny zero-dependency HTTP API (`node:http`) for live data:
 | `GET /api/events` | Event log from the sentry loop |
 | `GET /api/rules` · `POST` · `DELETE /api/rules/:id` | List / add / remove natural-language rules |
 | `GET /api/entities` · `POST` · `DELETE /api/entities/:id` | List / teach / forget known-friendly entities |
+| `GET /api/audit` | Structured inference audit log + summary (model loads/unloads, TTFT, tokens/sec) |
 | `GET /api/health` | Liveness probe |
 
 > Opened directly as a file (`open src/web/index.html`) the dashboard runs in a
@@ -315,7 +316,7 @@ mWh/event). Targets for Raspberry Pi 4 (4GB):
 
 ## 🧪 Testing & CI
 
-**118 unit tests** (vision, rules + live editing + real fallback classification over the 233-scene fixture set, power state machine, telemetry, RAG known-entity recognition, P2P phone alerts, PIR wake, JSONL persistence, dashboard API) + offline verification scan + readiness suite. Run `npm test`. *(Tests mock only the `@qvac/sdk`/hardware boundary; every assertion exercises real project logic — no tautological label-fed tests.)*
+**128 unit tests** (vision, rules + live editing + real fallback classification over the 233-scene fixture set, power state machine, telemetry, inference audit log, RAG known-entity recognition, P2P phone alerts, PIR wake, JSONL persistence, dashboard API) + offline verification scan + readiness suite. Run `npm test`. *(Tests mock only the `@qvac/sdk`/hardware boundary; every assertion exercises real project logic — no tautological label-fed tests.)*
 
 **4-stage pipeline:** Quality → Security → Offline Verify → Deploy
 
@@ -348,7 +349,8 @@ scarecrow/
 │   │   ├── power.ts    # Sentry loop + live telemetry (getSystemStatus)
 │   │   ├── gpio.ts     # PIR motion-wake source
 │   │   ├── storage.ts  # Append-only JSONL event persistence
-│   │   └── p2p.ts      # P2P phone push alerts on match
+│   │   ├── p2p.ts      # P2P phone push alerts on match
+│   │   └── audit.ts    # Structured inference audit log (loads/unloads, TTFT, tok/s)
 │   └── web/
 │       ├── server.ts   # Dashboard HTTP server + JSON API (node:http)
 │       └── index.html  # Live dashboard + rule/entity editor (Pi hotspot)

@@ -57,7 +57,7 @@ def main():
 
     # ── 4. Source Code ──
     print("\n  ── Source Code ──")
-    for f in ["src/core/qvac.ts", "src/core/vision.ts", "src/core/rules.ts", "src/core/power.ts"]:
+    for f in ["src/core/qvac.ts", "src/core/vision.ts", "src/core/rules.ts", "src/core/power.ts", "src/core/audit.ts"]:
         check(f, os.path.isfile(os.path.join(base, f)), "File missing")
     check("src/web/index.html", os.path.isfile(os.path.join(base, "src/web/index.html")), "Dashboard missing")
     # DoraHacks form: "clear structured explanation of all remote APIs you're using"

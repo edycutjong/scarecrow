@@ -11,6 +11,12 @@ import {
   GTE_LARGE_FP16,
   TTS_EN_ES_CHATTERBOX_Q4F16,
 } from "@qvac/sdk";
+import {
+  recordModelLoad,
+  recordModelUnload,
+  recordCompletion,
+  estimateTokens,
+} from "./audit.js";
 
 // Define custom constants or fallbacks
 export const MEDPSY_MODEL_ID = "MedPsy-1.7B"; // Default name for MedPsy-1.7B
@@ -80,7 +86,9 @@ export async function loadLLMModel(modelSrc: any = LLAMA_MODEL_ID, delegateParam
       };
     }
 
+    const tLoad = Date.now();
     const modelId = await loadModel(params);
+    recordModelLoad(modelId, "llm", Date.now() - tLoad);
     return modelId;
   } catch (error) {
     console.error("Failed to load LLM model:", error);
@@ -91,10 +99,12 @@ export async function loadLLMModel(modelSrc: any = LLAMA_MODEL_ID, delegateParam
 export async function loadEmbeddingModel(modelSrc: any = EMBEDDING_MODEL_ID) {
   try {
     const src = typeof modelSrc === "string" ? modelSrc : modelSrc.src;
+    const tLoad = Date.now();
     const modelId = await loadModel({
       modelSrc: src,
       modelType: "embeddings",
     } as any);
+    recordModelLoad(modelId, "embeddings", Date.now() - tLoad);
     return modelId;
   } catch (error) {
     console.error("Failed to load Embedding model:", error);
@@ -104,6 +114,7 @@ export async function loadEmbeddingModel(modelSrc: any = EMBEDDING_MODEL_ID) {
 
 export async function loadTTSModel(_eSpeakDataPath: string = "./espeak-data") {
   try {
+    const tLoad = Date.now();
     const modelId = await loadModel({
       modelSrc: TTS_EN_ES_CHATTERBOX_Q4F16.src,
       modelType: "tts",
@@ -111,6 +122,7 @@ export async function loadTTSModel(_eSpeakDataPath: string = "./espeak-data") {
         language: "en",
       },
     } as any);
+    recordModelLoad(modelId, "tts", Date.now() - tLoad);
     return modelId;
   } catch (error) {
     console.error("Failed to load TTS model:", error);
@@ -121,6 +133,7 @@ export async function loadTTSModel(_eSpeakDataPath: string = "./espeak-data") {
 export async function unloadQVACModel(modelId: string) {
   try {
     await unloadModel({ modelId });
+    recordModelUnload(modelId);
   } catch (error) {
     console.error(`Failed to unload model ${modelId}:`, error);
   }
@@ -148,8 +161,15 @@ export async function runCompletion(params: CompletionParams): Promise<{ text: s
         tokenStream: result.tokenStream,
       };
     } else {
+      const tStart = Date.now();
       const result = await completion({ ...completionParams, stream: false });
       const text = await result.text;
+      recordCompletion({
+        modelId: params.modelId,
+        totalMs: Date.now() - tStart,
+        tokenCount: estimateTokens(text ?? ""),
+        source: "local",
+      });
       return { text };
     }
   } catch (error) {
