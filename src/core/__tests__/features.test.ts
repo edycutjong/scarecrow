@@ -11,7 +11,7 @@ const mockRagIngest = vi.fn();
 const mockRagSearch = vi.fn();
 
 vi.mock("child_process", () => ({
-  exec: vi.fn((cmd: string, cb: any) => cb(null, { stdout: "", stderr: "" })),
+  execFile: vi.fn((file: string, args: any, cb: any) => cb(null, { stdout: "", stderr: "" })),
 }));
 
 vi.mock("@qvac/sdk", () => ({
@@ -274,8 +274,10 @@ describe("gpio.ts — PIR wake source", () => {
 
 // ── storage.ts (JSONL persistence, real fs) ──────────────────────────────────
 describe("storage.ts — JSONL event persistence", () => {
-  const tmpFile = () =>
-    path.join(os.tmpdir(), `scarecrow_events_${Date.now()}_${Math.random().toString(36).slice(2)}.jsonl`);
+  const tmpFile = async () => {
+    const dir = await realFs.mkdtemp(path.join(os.tmpdir(), "scarecrow-events-"));
+    return path.join(dir, "events.jsonl");
+  };
 
   const evt = (over: Partial<PersistableEvent> = {}): PersistableEvent => ({
     timestamp: "2026-06-09T14:23:01.000Z",
@@ -286,33 +288,33 @@ describe("storage.ts — JSONL event persistence", () => {
   });
 
   it("appends and reloads events (roundtrip)", async () => {
-    const file = tmpFile();
+    const file = await tmpFile();
     expect(await appendEvent(evt({ sceneDescription: "a" }), file)).toBe(true);
     expect(await appendEvent(evt({ sceneDescription: "b", alerted: false }), file)).toBe(true);
     const loaded = await loadEvents(file);
     expect(loaded.map((e) => e.sceneDescription)).toEqual(["a", "b"]);
     expect(loaded[1].alerted).toBe(false);
-    await realFs.unlink(file).catch(() => {});
+    await realFs.rm(path.dirname(file), { recursive: true, force: true });
   });
 
   it("returns [] for a non-existent file", async () => {
-    expect(await loadEvents(tmpFile())).toEqual([]);
+    expect(await loadEvents(await tmpFile())).toEqual([]);
   });
 
   it("skips malformed lines without throwing", async () => {
-    const file = tmpFile();
+    const file = await tmpFile();
     await realFs.writeFile(file, '{"timestamp":"t","sceneDescription":"ok","matchedRuleId":null,"alerted":false}\nNOT_JSON\n');
     const loaded = await loadEvents(file);
     expect(loaded).toHaveLength(1);
     expect(loaded[0].sceneDescription).toBe("ok");
-    await realFs.unlink(file).catch(() => {});
+    await realFs.rm(path.dirname(file), { recursive: true, force: true });
   });
 
   it("persists the recognizedEntity field", async () => {
-    const file = tmpFile();
+    const file = await tmpFile();
     await appendEvent(evt({ recognizedEntity: "My truck", alerted: false }), file);
     const loaded = await loadEvents(file);
     expect(loaded[0].recognizedEntity).toBe("My truck");
-    await realFs.unlink(file).catch(() => {});
+    await realFs.rm(path.dirname(file), { recursive: true, force: true });
   });
 });

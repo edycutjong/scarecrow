@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 
 // Mock @qvac/sdk
 const mockLoadModel = vi.fn();
@@ -12,7 +12,7 @@ const mockStartQVACProvider = vi.fn();
 const mockStopQVACProvider = vi.fn();
 
 vi.mock("child_process", () => ({
-  exec: vi.fn((cmd: string, cb: any) => cb(null, { stdout: "", stderr: "" }))
+  execFile: vi.fn((file: string, args: any, cb: any) => cb(null, { stdout: "", stderr: "" }))
 }));
 vi.mock("fs/promises", () => ({
   default: {
@@ -121,7 +121,7 @@ describe("Scarecrow Core Module", () => {
     });
 
     it("should handle captureFrame failure", async () => {
-      vi.mocked(exec).mockImplementationOnce(((cmd: string, cb: any) => {
+      vi.mocked(execFile).mockImplementationOnce(((file: string, args: any, cb: any) => {
         cb(new Error("Camera error"));
         return {} as any;
       }) as any);

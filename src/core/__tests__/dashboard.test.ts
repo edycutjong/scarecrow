@@ -9,7 +9,7 @@ const mockStartQVACProvider = vi.fn();
 const mockStopQVACProvider = vi.fn();
 
 vi.mock("child_process", () => ({
-  exec: vi.fn((cmd: string, cb: any) => cb(null, { stdout: "", stderr: "" })),
+  execFile: vi.fn((file: string, args: any, cb: any) => cb(null, { stdout: "", stderr: "" })),
 }));
 vi.mock("fs/promises", () => ({
   default: {

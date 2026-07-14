@@ -1,10 +1,10 @@
 import { runCompletion, loadLLMModel, unloadQVACModel, MULTIMODAL_MODEL_ID } from "./qvac.js";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 // Mock rotation state
 let mockFrameIndex = 0;
@@ -32,7 +32,7 @@ export async function captureFrame(): Promise<Buffer | null> {
   const tmpPath = path.join(process.cwd(), "temp_frame.jpg");
   try {
     console.log("[vision] Capturing frame using libcamera-still...");
-    await execAsync(`libcamera-still -t 500 -o ${tmpPath} -n --width 640 --height 480`);
+    await execFileAsync("libcamera-still", ["-t", "500", "-o", tmpPath, "-n", "--width", "640", "--height", "480"]);
     const buffer = await fs.readFile(tmpPath);
     await fs.unlink(tmpPath); // Cleanup
     console.log("[vision] Frame captured successfully.");
